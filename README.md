@@ -67,7 +67,6 @@ Or use:
 ## 👥 Contributors
 
 - **Project Team** - Initial scaffold and architecture
-- **Gemini CLI Assistant** - Full-stack integration, AI-ready architecture, and database engineering
 
 ---
 
