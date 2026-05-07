@@ -15,6 +15,11 @@ public sealed class CraftGameDbContext(DbContextOptions<CraftGameDbContext> opti
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<Level>()
+            .HasOne(l => l.GoalElement)
+            .WithMany()
+            .HasForeignKey(l => l.GoalElementId);
+
         modelBuilder.Entity<GameSession>()
             .HasOne(s => s.User)
             .WithMany(u => u.GameSessions)
