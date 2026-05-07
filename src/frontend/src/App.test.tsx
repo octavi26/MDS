@@ -1,12 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import App from './App'
 
 describe('App', () => {
-  beforeEach(() => {
-    cleanup()
-  })
-
   it('renders the level selection screen', () => {
     render(<App />)
 
@@ -17,9 +13,8 @@ describe('App', () => {
   it('renders initial mock levels', () => {
     render(<App />)
     
-    // Using getAllByText and checking length to be safe against double-render issues if cleanup fails
-    expect(screen.getAllByText('Level 1: The Basics').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Level 2: Muddy Waters').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Level 3: Tropical Storm').length).toBeGreaterThan(0)
+    expect(screen.getByText('Level 1: The Basics')).toBeInTheDocument()
+    expect(screen.getByText('Level 2: Muddy Waters')).toBeInTheDocument()
+    expect(screen.getByText('Level 3: Tropical Storm')).toBeInTheDocument()
   })
 })
