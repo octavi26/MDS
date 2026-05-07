@@ -1,20 +1,50 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import App from './App'
 
+// Mock the apiClient
+vi.mock('./api/apiClient', () => ({
+  apiClient: {
+    getLevels: vi.fn().mockResolvedValue([
+      {
+        id: '1',
+        name: 'The First Step',
+        description: 'Combine elements to create Steam!',
+        difficulty: 1,
+        goalItem: 'Steam',
+        startingItems: ['Water', 'Fire']
+      },
+      {
+        id: '2',
+        name: "Nature's Recipe",
+        description: 'Create Mud and Rain to progress.',
+        difficulty: 2,
+        goalItem: 'Rain',
+        startingItems: ['Water', 'Fire', 'Earth', 'Air']
+      }
+    ]),
+    startSession: vi.fn().mockResolvedValue({ sessionId: 'test-session-id' }),
+    getSession: vi.fn().mockResolvedValue({
+      id: 'test-session-id',
+      levelId: '1',
+      inventory: [{ name: 'Water', quantity: 1 }, { name: 'Fire', quantity: 1 }]
+    }),
+    getCompanionComment: vi.fn().mockResolvedValue({ comment: 'Hello tester!' })
+  }
+}))
+
 describe('App', () => {
-  it('renders the level selection screen', () => {
+  it('renders the level selection screen', async () => {
     render(<App />)
 
-    expect(screen.getByText('Craft Game')).toBeInTheDocument()
-    expect(screen.getByText('Select a level to start your crafting journey')).toBeInTheDocument()
+    expect(await screen.findByText('Craft Game')).toBeInTheDocument()
+    expect(await screen.findByText('Select a level to start your crafting journey')).toBeInTheDocument()
   })
 
-  it('renders initial mock levels', () => {
+  it('renders loaded levels', async () => {
     render(<App />)
     
-    expect(screen.getByText('Level 1: The Basics')).toBeInTheDocument()
-    expect(screen.getByText('Level 2: Muddy Waters')).toBeInTheDocument()
-    expect(screen.getByText('Level 3: Tropical Storm')).toBeInTheDocument()
+    expect(await screen.findByText('The First Step')).toBeInTheDocument()
+    expect(await screen.findByText("Nature's Recipe")).toBeInTheDocument()
   })
 })

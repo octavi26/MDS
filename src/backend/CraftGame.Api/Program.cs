@@ -26,6 +26,7 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
         ?? "Host=localhost;Port=5432;Database=craftgame;Username=craftgame;Password=craftgame";
 
     options.UseNpgsql(connectionString);
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 builder.Services.AddSignalR();
@@ -112,39 +113,84 @@ app.MapPost("/api/companion/comments", async (
 
 app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 {
-    return await db.Levels.ToListAsync();
+    var startingElements = await db.Elements
+        .Where(e => e.IsStartingElement)
+        .Select(e => e.Name)
+        .ToListAsync();
+
+    return await db.Levels
+        .Select(l => new {
+            l.Id,
+            l.Name,
+            l.Description,
+            l.Difficulty,
+            GoalItem = l.GoalElementName,
+            StartingItems = startingElements
+        })
+        .ToListAsync();
 })
 .WithTags("Game");
 
-app.MapPost("/api/sessions/start", async (StartSessionRequest request, CraftGameDbContext db) =>
+app.MapPost("/api/craft", async (
+    CraftRequest request,
+    CraftGameDbContext db,
+    IHttpClientFactory httpClientFactory,
+    IConfiguration configuration) =>
 {
-    var session = new GameSession
-    {
-        Id = Guid.NewGuid(),
-        UserId = request.UserId,
-        LevelId = request.LevelId,
-        StartTime = DateTime.UtcNow
-    };
+    // 1. Sort element names to ensure deterministic combination lookup
+    var elements = new[] { request.ElementA, request.ElementB }.OrderBy(e => e).ToList();
+    
+    // 2. Call AI Service to get the result of the combination
+    var aiServiceUrl = configuration["AiServiceUrl"] ?? "http://ai-service:8001";
+    var client = httpClientFactory.CreateClient();
+    
+    var response = await client.PostAsJsonAsync($"{aiServiceUrl}/craft", new {
+        element_a = elements[0],
+        element_b = elements[1]
+    });
 
-    var startingElements = await db.Elements
-        .Where(e => e.IsStartingElement)
-        .ToListAsync();
+    if (!response.IsSuccessStatusCode) return Results.Problem("AI Service failed to craft.");
 
-    foreach (var element in startingElements)
+    var result = await response.Content.ReadFromJsonAsync<CraftResponse>();
+    if (result == null) return Results.Problem("Invalid response from AI Service.");
+
+    // 3. Ensure the result element exists in the DB
+    var element = await db.Elements.FirstOrDefaultAsync(e => e.Name == result.Result);
+    if (element == null)
     {
-        session.InventoryItems.Add(new SessionInventory
+        element = new Element
         {
             Id = Guid.NewGuid(),
-            GameSessionId = session.Id,
+            Name = result.Result,
+            Description = $"Discovered by combining {elements[0]} and {elements[1]}",
+            Icon = "✨", // Default icon for discovered elements
+            IsStartingElement = false
+        };
+        db.Elements.Add(element);
+        await db.SaveChangesAsync();
+    }
+
+    // 4. Add to session inventory if not already there
+    var inventoryItem = await db.SessionInventories
+        .FirstOrDefaultAsync(si => si.GameSessionId == request.SessionId && si.ElementId == element.Id);
+
+    if (inventoryItem == null)
+    {
+        db.SessionInventories.Add(new SessionInventory
+        {
+            Id = Guid.NewGuid(),
+            GameSessionId = request.SessionId,
             ElementId = element.Id,
             Quantity = 1
         });
+        await db.SaveChangesAsync();
     }
 
-    db.GameSessions.Add(session);
-    await db.SaveChangesAsync();
-
-    return Results.Ok(new { sessionId = session.Id });
+    return Results.Ok(new { 
+        name = element.Name, 
+        description = element.Description,
+        icon = element.Icon
+    });
 })
 .WithTags("Game");
 
@@ -153,5 +199,7 @@ app.MapHub<GameHub>("/hubs/game");
 app.Run();
 
 public record StartSessionRequest(Guid UserId, Guid LevelId);
+public record CraftRequest(Guid SessionId, string ElementA, string ElementB);
+public record CraftResponse(string Result);
 
 public partial class Program;
