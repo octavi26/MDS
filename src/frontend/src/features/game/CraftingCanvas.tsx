@@ -1,13 +1,23 @@
 import React from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { Trash2 } from 'lucide-react';
+import { useGameStore } from './gameStore';
+import DraggableItem from './DraggableItem';
 
 const CraftingCanvas: React.FC = () => {
-  const handleClearCanvas = () => {
-    console.log('Canvas cleared');
-  };
+  const { setNodeRef } = useDroppable({
+    id: 'crafting-canvas',
+  });
+
+  const { canvasItems, clearCanvas, cloneItem } = useGameStore();
 
   return (
-    <section className="flex-1 relative bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:32px_32px] bg-zinc-950 flex flex-col overflow-hidden">
+    <section 
+      ref={setNodeRef}
+      // @ts-ignore - custom attribute for DOM lookup
+      ref-id="crafting-canvas-container"
+      className="flex-1 relative bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:32px_32px] bg-zinc-950 flex flex-col overflow-hidden"
+    >
       {/* Workspace Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none">
         <div className="flex flex-col items-center">
@@ -18,26 +28,44 @@ const CraftingCanvas: React.FC = () => {
         </div>
       </div>
 
-      {/* Canvas Header/Breadcrumb area */}
+      {/* Canvas Header */}
       <div className="p-4 flex items-center justify-between pointer-events-none z-10">
         <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800">
           workspace_v1.0
         </span>
       </div>
 
-      {/* Main interaction area (Visual Only) */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center opacity-40 select-none animate-pulse">
-          <p className="text-sm font-medium text-zinc-500 uppercase tracking-widest">
-            Drop items here to start crafting
-          </p>
-        </div>
+      {/* Render Canvas Items */}
+      <div className="flex-1 relative">
+        {canvasItems.map((item) => (
+          <DraggableItem
+            key={item.id}
+            id={item.id}
+            name={item.name}
+            type="canvas"
+            style={{
+              left: item.x,
+              top: item.y,
+            }}
+            onDoubleClick={() => cloneItem(item.id)}
+          />
+        ))}
+
+        {canvasItems.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center opacity-40 select-none animate-pulse">
+              <p className="text-sm font-medium text-zinc-500 uppercase tracking-widest">
+                Drop items here to start crafting
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Floating Controls */}
-      <div className="absolute bottom-6 right-6 flex flex-col gap-3">
+      <div className="absolute bottom-6 right-6 flex flex-col gap-3 z-30">
         <button
-          onClick={handleClearCanvas}
+          onClick={clearCanvas}
           className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/10 rounded-lg transition-all shadow-xl group active:scale-95"
         >
           <Trash2 size={18} className="group-hover:animate-bounce" />
