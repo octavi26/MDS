@@ -38,7 +38,19 @@ builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, cl
 });
 builder.Services.AddSingleton<ICompanionPromptBuilder, CompanionPromptBuilder>();
 builder.Services.AddSingleton<ICompanionLineSanitizer, CompanionLineSanitizer>();
-builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
+builder.Services.AddSingleton<DeterministicCompanionAgent>();
+builder.Services.AddTransient<OllamaCompanionAgent>();
+builder.Services.AddTransient<ICompanionAgent>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
+
+    if (!options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase))
+    {
+        return serviceProvider.GetRequiredService<DeterministicCompanionAgent>();
+    }
+
+    return serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
