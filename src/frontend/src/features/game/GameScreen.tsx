@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  DndContext, 
-  useSensor, 
-  useSensors, 
-  PointerSensor, 
+import {
+  DndContext,
+  useSensor,
+  useSensors,
+  PointerSensor,
   DragOverlay,
   defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
@@ -17,6 +17,7 @@ import CraftingCanvas from './CraftingCanvas';
 import ItemCard from './ItemCard';
 import CompanionBubble from './CompanionBubble';
 import { useGameStore } from './gameStore';
+import { useCompanion } from './useCompanion';
 
 const USER_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
 
@@ -36,7 +37,7 @@ const GameScreen: React.FC = () => {
   const { addItem, updateItemPosition, canvasItems } = useGameStore();
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [companionMessage, setCompanionMessage] = useState<string>("Let's start crafting! Drag elements from the sidebar to the canvas.");
+  const [apiCompanionMessage, setApiCompanionMessage] = useState<string | null>(null);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
     queryKey: ['levels'],
@@ -52,7 +53,7 @@ const GameScreen: React.FC = () => {
       setSessionId(data.sessionId);
       try {
         const commentData = await apiClient.getCompanionComment('GameStarted', []);
-        setCompanionMessage(commentData.comment);
+        setApiCompanionMessage(commentData.comment);
       } catch (err) {
         console.error("Failed to fetch companion comment", err);
       }
@@ -70,6 +71,25 @@ const GameScreen: React.FC = () => {
     queryFn: () => apiClient.getSession(sessionId!),
     enabled: !!sessionId,
   });
+
+  const localCompanion = useCompanion({
+    levelName: level?.name,
+    goalName: level?.goalItem,
+    inventory: level?.startingItems ?? [],
+  });
+
+  // Use API message if available (on start), otherwise use local companion logic
+  const currentCompanionMessage = apiCompanionMessage || localCompanion.message;
+
+  const previousCanvasCountRef = useRef(0);
+  useEffect(() => {
+    const previous = previousCanvasCountRef.current;
+    if (previous > 0 && canvasItems.length === 0) {
+      localCompanion.notifyCanvasCleared();
+      setApiCompanionMessage(null); // Switch to local logic after first interaction
+    }
+    previousCanvasCountRef.current = canvasItems.length;
+  }, [canvasItems.length, localCompanion]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -109,6 +129,8 @@ const GameScreen: React.FC = () => {
       const y = clientY - rect.top - 25; 
       
       addItem(data.name, x, y);
+      localCompanion.notifyElementAdded(data.name);
+      setApiCompanionMessage(null); // Switch to local logic after first interaction
     } else if (data.type === 'canvas') {
       const item = canvasItems.find((i) => i.id === data.originId);
       if (item) {
@@ -182,7 +204,7 @@ const GameScreen: React.FC = () => {
           <CraftingCanvas />
           
           <div className="absolute bottom-10 left-72 z-40">
-            <CompanionBubble message={companionMessage} />
+            <CompanionBubble message={currentCompanionMessage} />
           </div>
         </main>
       </div>
