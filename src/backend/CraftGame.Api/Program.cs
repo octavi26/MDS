@@ -1,9 +1,13 @@
 using System.Text.Json.Serialization;
 using CraftGame.Api.Companion;
+using CraftGame.Api.Companion.Ollama;
+using CraftGame.Api.Companion.Prompts;
+using CraftGame.Api.Companion.Sanitization;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
 using CraftGame.Api.Hubs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,7 +29,28 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
 });
 
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
+builder.Services.Configure<CompanionAgentOptions>(
+    builder.Configuration.GetSection(CompanionAgentOptions.SectionName));
+builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
+    client.BaseAddress = new Uri(options.OllamaBaseUrl);
+});
+builder.Services.AddSingleton<ICompanionPromptBuilder, CompanionPromptBuilder>();
+builder.Services.AddSingleton<ICompanionLineSanitizer, CompanionLineSanitizer>();
+builder.Services.AddSingleton<DeterministicCompanionAgent>();
+builder.Services.AddTransient<OllamaCompanionAgent>();
+builder.Services.AddTransient<ICompanionAgent>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
+
+    if (!options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase))
+    {
+        return serviceProvider.GetRequiredService<DeterministicCompanionAgent>();
+    }
+
+    return serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
