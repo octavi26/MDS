@@ -1,21 +1,34 @@
 name: CI
-
 on:
   pull_request:
   push:
-    branches: [main]
-
+    branches:
+      - main
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: craftgame
+          POSTGRES_USER: craftgame
+          POSTGRES_PASSWORD: craftgame
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
       - run: dotnet restore MDS.sln
-      - run: dotnet test MDS.sln --no-restore
-
+      - run: dotnet build MDS.sln --no-restore
+      - run: dotnet test MDS.sln --no-build
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +44,6 @@ jobs:
         working-directory: src/frontend
       - run: npm test
         working-directory: src/frontend
-
   ai-service:
     runs-on: ubuntu-latest
     steps:
