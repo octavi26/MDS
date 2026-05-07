@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { mockLevels } from '../../data/mockData';
 import { ChevronLeft } from 'lucide-react';
 import InventorySidebar from './InventorySidebar';
+import CraftingCanvas from './CraftingCanvas';
 
 const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
@@ -30,7 +31,7 @@ const GameScreen: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
       {/* Header */}
-      <header className="h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6 shrink-0">
+      <header className="h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6 shrink-0 z-20">
         <div className="flex items-center gap-4">
           <Link 
             to="/" 
@@ -62,17 +63,7 @@ const GameScreen: React.FC = () => {
         <InventorySidebar items={level.startingItems} />
 
         {/* Crafting Canvas */}
-        <section className="flex-1 relative bg-[radial-gradient(#1e1e1e_1px,transparent_1px)] [background-size:20px_20px] flex flex-col">
-          <div className="p-4 flex items-center justify-between pointer-events-none">
-             <span className="text-xs font-mono text-zinc-700">WORKSPACE_ROOT</span>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center opacity-20 select-none">
-              <p className="text-2xl font-black uppercase tracking-widest mb-2">Crafting Canvas</p>
-              <p className="text-sm">Main Interaction Area Placeholder</p>
-            </div>
-          </div>
-        </section>
+        <CraftingCanvas />
 
         {/* Companion Chat Panel */}
         <aside className="w-80 border-l border-zinc-800 bg-zinc-900/30 flex flex-col">
