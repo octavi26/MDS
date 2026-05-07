@@ -14,6 +14,8 @@ const CraftingCanvas: React.FC = () => {
   return (
     <section 
       ref={setNodeRef}
+      // @ts-ignore - custom attribute for DOM lookup
+      ref-id="crafting-canvas-container"
       className="flex-1 relative bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:32px_32px] bg-zinc-950 flex flex-col overflow-hidden"
     >
       {/* Workspace Watermark */}

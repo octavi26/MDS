@@ -1,17 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { DndContext, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
+import { 
+  DndContext, 
+  useSensor, 
+  useSensors, 
+  PointerSensor, 
+  DragOverlay,
+  defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, DropAnimation } from '@dnd-kit/core';
 import { mockLevels } from '../../data/mockData';
 import { ChevronLeft } from 'lucide-react';
 import InventorySidebar from './InventorySidebar';
 import CraftingCanvas from './CraftingCanvas';
+import ItemCard from './ItemCard';
 import { useGameStore } from './gameStore';
+
+const dropAnimation: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.5',
+      },
+    },
+  }),
+};
 
 const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const { addItem, updateItemPosition, canvasItems } = useGameStore();
+  const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
 
   const level = mockLevels.find((l) => l.id === levelId);
 
@@ -23,26 +42,41 @@ const GameScreen: React.FC = () => {
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const data = active.data.current;
+    if (data) {
+      setActiveItem({ id: active.id as string, name: data.name, type: data.type });
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over, delta } = event;
+    setActiveItem(null);
 
     if (!over || over.id !== 'crafting-canvas') return;
 
     const data = active.data.current;
     if (!data) return;
 
+    // Get the canvas element to calculate relative position correctly
+    const canvasElement = document.querySelector('[ref-id="crafting-canvas-container"]');
+    if (!canvasElement) return;
+    
+    const rect = canvasElement.getBoundingClientRect();
+
     if (data.type === 'inventory') {
-      // Logic for dropping a new item from inventory
-      // We need to estimate where it was dropped relative to the canvas
-      // Since it's a fixed-layout grid, we can use the cursor position if available, 
-      // but simpler is to use a fixed offset from the drop point or 
-      // handle it via a better coordinate system.
-      // For now, let's place it at a reasonable default offset from the center or absolute pos.
-      const x = 250 + delta.x;
-      const y = 250 + delta.y;
+      // For inventory items, we want them to spawn exactly where the cursor is.
+      // event.activatorEvent is the mouse/touch event. 
+      // We can use the client coordinates from the end of the drag.
+      const clientX = (event.activatorEvent as MouseEvent).clientX + delta.x;
+      const clientY = (event.activatorEvent as MouseEvent).clientY + delta.y;
+      
+      const x = clientX - rect.left - 50; // Offset by half width approx
+      const y = clientY - rect.top - 25; // Offset by half height approx
+      
       addItem(data.name, x, y);
     } else if (data.type === 'canvas') {
-      // Logic for moving an existing item on the canvas
       const item = canvasItems.find((i) => i.id === data.originId);
       if (item) {
         updateItemPosition(item.id, item.x + delta.x, item.y + delta.y);
@@ -68,7 +102,11 @@ const GameScreen: React.FC = () => {
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext 
+      sensors={sensors} 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
         {/* Header */}
         <header className="h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6 shrink-0 z-20">
@@ -115,6 +153,12 @@ const GameScreen: React.FC = () => {
           </aside>
         </main>
       </div>
+
+      <DragOverlay dropAnimation={dropAnimation}>
+        {activeItem ? (
+          <ItemCard name={activeItem.name} isDragging />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };
