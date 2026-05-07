@@ -1,2 +1,4 @@
 # MDS
 Infinite AI Crafter
+
+Rules: https://app.box.com/s/6ly7x02gnt1i3yyjb5hec4no4narasnu
