@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using CraftGame.Api.Companion;
 using CraftGame.Api.Data;
 using CraftGame.Api.Hubs;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +24,7 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -32,6 +35,11 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
     });
+});
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -59,6 +67,16 @@ app.MapGet("/ready", async (CraftGameDbContext db, CancellationToken cancellatio
         : Results.Problem("Database is not reachable.");
 })
 .WithTags("System");
+
+app.MapPost("/api/companion/comments", async (
+    CompanionCommentRequest request,
+    ICompanionAgent companionAgent,
+    CancellationToken cancellationToken) =>
+{
+    var comment = await companionAgent.GenerateCommentAsync(request.ToContext(), cancellationToken);
+    return Results.Ok(comment);
+})
+.WithTags("Companion");
 
 app.MapHub<GameHub>("/hubs/game");
 
