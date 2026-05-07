@@ -1,10 +1,31 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mockLevels } from '../../data/mockData';
-import type { Level } from '../../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../api/apiClient';
+import type { Level } from '../../api/apiClient';
 
 const LevelSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { data: levels, isLoading, error } = useQuery({
+    queryKey: ['levels'],
+    queryFn: apiClient.getLevels,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+        <div className="text-xl animate-pulse">Loading levels...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-red-400 flex items-center justify-center">
+        <div className="text-xl">Error loading levels. Is the backend running?</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8">
@@ -15,7 +36,7 @@ const LevelSelectionScreen: React.FC = () => {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockLevels.map((level: Level) => (
+          {levels?.map((level: Level) => (
             <div
               key={level.id}
               onClick={() => navigate(`/game/${level.id}`)}

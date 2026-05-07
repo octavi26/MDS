@@ -3,6 +3,7 @@ using System;
 using CraftGame.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CraftGame.Api.Migrations
 {
     [DbContext(typeof(CraftGameDbContext))]
-    partial class CraftGameDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260507211117_AddHorseAndMoreLevels")]
+    partial class AddHorseAndMoreLevels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -79,6 +82,54 @@ namespace CraftGame.Api.Migrations
                             Icon = "🌱",
                             IsStartingElement = true,
                             Name = "Earth"
+                        },
+                        new
+                        {
+                            Id = new Guid("d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a"),
+                            Description = "A hot steam element",
+                            Icon = "♨️",
+                            IsStartingElement = false,
+                            Name = "Steam"
+                        },
+                        new
+                        {
+                            Id = new Guid("b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"),
+                            Description = "Wet earth",
+                            Icon = "💩",
+                            IsStartingElement = false,
+                            Name = "Mud"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f"),
+                            Description = "Fine particles",
+                            Icon = "🌫️",
+                            IsStartingElement = false,
+                            Name = "Dust"
+                        },
+                        new
+                        {
+                            Id = new Guid("d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a"),
+                            Description = "Water falling from the sky",
+                            Icon = "🌧️",
+                            IsStartingElement = false,
+                            Name = "Rain"
+                        },
+                        new
+                        {
+                            Id = new Guid("f5e6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b"),
+                            Description = "The spark of existence",
+                            Icon = "🧬",
+                            IsStartingElement = false,
+                            Name = "Life"
+                        },
+                        new
+                        {
+                            Id = new Guid("a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d"),
+                            Description = "A majestic animal",
+                            Icon = "🐎",
+                            IsStartingElement = false,
+                            Name = "Horse"
                         });
                 });
 
@@ -122,15 +173,16 @@ namespace CraftGame.Api.Migrations
                     b.Property<int>("Difficulty")
                         .HasColumnType("integer");
 
-                    b.Property<string>("GoalElementName")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<Guid>("GoalElementId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GoalElementId");
 
                     b.ToTable("Levels");
 
@@ -140,7 +192,7 @@ namespace CraftGame.Api.Migrations
                             Id = new Guid("e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b"),
                             Description = "Combine elements to create Steam!",
                             Difficulty = 1,
-                            GoalElementName = "Steam",
+                            GoalElementId = new Guid("d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a"),
                             Name = "The First Step"
                         },
                         new
@@ -148,7 +200,7 @@ namespace CraftGame.Api.Migrations
                             Id = new Guid("f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c"),
                             Description = "Create Mud and Rain to progress.",
                             Difficulty = 2,
-                            GoalElementName = "Rain",
+                            GoalElementId = new Guid("d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a"),
                             Name = "Nature's Recipe"
                         },
                         new
@@ -156,7 +208,7 @@ namespace CraftGame.Api.Migrations
                             Id = new Guid("01234567-89ab-cdef-0123-456789abcdef"),
                             Description = "Can you find the spark of Life?",
                             Difficulty = 3,
-                            GoalElementName = "Life",
+                            GoalElementId = new Guid("f5e6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b"),
                             Name = "Life's Mystery"
                         },
                         new
@@ -164,7 +216,7 @@ namespace CraftGame.Api.Migrations
                             Id = new Guid("fedcba98-7654-3210-fedc-ba9876543210"),
                             Description = "Bring a Horse to life!",
                             Difficulty = 4,
-                            GoalElementName = "Horse",
+                            GoalElementId = new Guid("a6b7c8d9-e0f1-2a3b-4c5d-6e7f8a9b0c1d"),
                             Name = "Animal Kingdom"
                         });
                 });
@@ -237,6 +289,17 @@ namespace CraftGame.Api.Migrations
                     b.Navigation("Level");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CraftGame.Api.Entities.Level", b =>
+                {
+                    b.HasOne("CraftGame.Api.Entities.Element", "GoalElement")
+                        .WithMany()
+                        .HasForeignKey("GoalElementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GoalElement");
                 });
 
             modelBuilder.Entity("CraftGame.Api.Entities.SessionInventory", b =>
