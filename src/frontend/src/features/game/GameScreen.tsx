@@ -14,6 +14,7 @@ import { ChevronLeft } from 'lucide-react';
 import InventorySidebar from './InventorySidebar';
 import CraftingCanvas from './CraftingCanvas';
 import ItemCard from './ItemCard';
+import CompanionBubble from './CompanionBubble';
 import { useGameStore } from './gameStore';
 
 const dropAnimation: DropAnimation = {
@@ -135,22 +136,14 @@ const GameScreen: React.FC = () => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex overflow-hidden relative">
           <InventorySidebar items={level.startingItems} />
           <CraftingCanvas />
-          <aside className="w-80 border-l border-zinc-800 bg-zinc-900/30 flex flex-col">
-            <div className="p-4 border-b border-zinc-800 bg-zinc-900/50">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-tight">Companion AI</h2>
-            </div>
-            <div className="flex-1 p-4 flex flex-col justify-end">
-              <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50 text-sm text-zinc-400 italic">
-                Companion Chat Panel Placeholder
-              </div>
-              <div className="h-10 bg-zinc-800 rounded-md border border-zinc-700 px-3 flex items-center text-zinc-500 text-xs">
-                Type a message...
-              </div>
-            </div>
-          </aside>
+          
+          {/* AI Companion Mascot - Floating in the bottom-left of the canvas area */}
+          <div className="absolute bottom-10 left-72 z-40">
+            <CompanionBubble message="Wow, mixing water and dirt to make mud? Groundbreaking." />
+          </div>
         </main>
       </div>
 
