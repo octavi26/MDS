@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { mockLevels } from '../../data/mockData';
 import { ChevronLeft } from 'lucide-react';
+import InventorySidebar from './InventorySidebar';
 
 const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
@@ -58,14 +59,7 @@ const GameScreen: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {/* Inventory Sidebar */}
-        <aside className="w-64 border-r border-zinc-800 bg-zinc-900/30 flex flex-col">
-          <div className="p-4 border-b border-zinc-800 bg-zinc-900/50">
-            <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-tight">Inventory</h2>
-          </div>
-          <div className="flex-1 p-4 flex items-center justify-center text-center italic text-zinc-600 text-sm">
-            Inventory Component Goes Here
-          </div>
-        </aside>
+        <InventorySidebar items={level.startingItems} />
 
         {/* Crafting Canvas */}
         <section className="flex-1 relative bg-[radial-gradient(#1e1e1e_1px,transparent_1px)] [background-size:20px_20px] flex flex-col">
