@@ -9,5 +9,6 @@ public class Element
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;
+    public bool IsStartingElement { get; set; }
     public ICollection<SessionInventory> Inventories { get; set; } = new List<SessionInventory>();
 }
