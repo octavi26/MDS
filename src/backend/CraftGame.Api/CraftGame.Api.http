@@ -1,0 +1,11 @@
+@CraftGame.Api_HostAddress = http://localhost:5088
+
+GET {{CraftGame.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{CraftGame.Api_HostAddress}}/ready
+Accept: application/json
+
+###

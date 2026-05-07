@@ -1,0 +1,13 @@
+bin/
+obj/
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+*.user
+*.suo
+.DS_Store
+.env
+coverage/
+TestResults/
