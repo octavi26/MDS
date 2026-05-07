@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using CraftGame.Api.Companion;
 using CraftGame.Api.Data;
+using CraftGame.Api.Entities;
 using CraftGame.Api.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -47,6 +48,12 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseSerilogRequestLogging();
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -78,8 +85,48 @@ app.MapPost("/api/companion/comments", async (
 })
 .WithTags("Companion");
 
+app.MapGet("/api/levels", async (CraftGameDbContext db) =>
+{
+    return await db.Levels.ToListAsync();
+})
+.WithTags("Game");
+
+app.MapPost("/api/sessions/start", async (StartSessionRequest request, CraftGameDbContext db) =>
+{
+    var session = new GameSession
+    {
+        Id = Guid.NewGuid(),
+        UserId = request.UserId,
+        LevelId = request.LevelId,
+        StartTime = DateTime.UtcNow
+    };
+
+    var startingElements = await db.Elements
+        .Where(e => e.IsStartingElement)
+        .ToListAsync();
+
+    foreach (var element in startingElements)
+    {
+        session.InventoryItems.Add(new SessionInventory
+        {
+            Id = Guid.NewGuid(),
+            GameSessionId = session.Id,
+            ElementId = element.Id,
+            Quantity = 1
+        });
+    }
+
+    db.GameSessions.Add(session);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { sessionId = session.Id });
+})
+.WithTags("Game");
+
 app.MapHub<GameHub>("/hubs/game");
 
 app.Run();
+
+public record StartSessionRequest(Guid UserId, Guid LevelId);
 
 public partial class Program;
