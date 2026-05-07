@@ -16,7 +16,17 @@ public sealed class OllamaCompanionAgent(
         CancellationToken cancellationToken = default)
     {
         var prompt = promptBuilder.BuildPrompt(context);
-        var rawLine = await ollamaClient.GenerateAsync(prompt, cancellationToken);
+
+        string? rawLine;
+        try
+        {
+            rawLine = await ollamaClient.GenerateAsync(prompt, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            rawLine = null;
+        }
+
         var line = lineSanitizer.Sanitize(rawLine);
 
         if (line is null)
