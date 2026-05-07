@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  DndContext, 
-  useSensor, 
-  useSensors, 
-  PointerSensor, 
+import {
+  DndContext,
+  useSensor,
+  useSensors,
+  PointerSensor,
   DragOverlay,
   defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
@@ -16,6 +16,7 @@ import CraftingCanvas from './CraftingCanvas';
 import ItemCard from './ItemCard';
 import CompanionBubble from './CompanionBubble';
 import { useGameStore } from './gameStore';
+import { useCompanion } from './useCompanion';
 
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
@@ -34,6 +35,21 @@ const GameScreen: React.FC = () => {
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
 
   const level = mockLevels.find((l) => l.id === levelId);
+
+  const companion = useCompanion({
+    levelName: level?.name,
+    goalName: level?.goalItem,
+    inventory: level?.startingItems ?? [],
+  });
+
+  const previousCanvasCountRef = useRef(0);
+  useEffect(() => {
+    const previous = previousCanvasCountRef.current;
+    if (previous > 0 && canvasItems.length === 0) {
+      companion.notifyCanvasCleared();
+    }
+    previousCanvasCountRef.current = canvasItems.length;
+  }, [canvasItems.length, companion]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -77,6 +93,7 @@ const GameScreen: React.FC = () => {
       const y = clientY - rect.top - 25; // Offset by half height approx
       
       addItem(data.name, x, y);
+      companion.notifyElementAdded(data.name);
     } else if (data.type === 'canvas') {
       const item = canvasItems.find((i) => i.id === data.originId);
       if (item) {
@@ -142,7 +159,7 @@ const GameScreen: React.FC = () => {
           
           {/* AI Companion Mascot - Floating in the bottom-left of the canvas area */}
           <div className="absolute bottom-10 left-72 z-40">
-            <CompanionBubble message="Wow, mixing water and dirt to make mud? Groundbreaking." />
+            <CompanionBubble message={companion.message} />
           </div>
         </main>
       </div>
