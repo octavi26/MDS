@@ -1,9 +1,11 @@
 using System.Text.Json.Serialization;
 using CraftGame.Api.Companion;
+using CraftGame.Api.Companion.Ollama;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
 using CraftGame.Api.Hubs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +29,11 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
 builder.Services.AddSignalR();
 builder.Services.Configure<CompanionAgentOptions>(
     builder.Configuration.GetSection(CompanionAgentOptions.SectionName));
+builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
+    client.BaseAddress = new Uri(options.OllamaBaseUrl);
+});
 builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
 builder.Services.AddCors(options =>
 {
