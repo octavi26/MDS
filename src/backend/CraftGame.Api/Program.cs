@@ -25,6 +25,8 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.Configure<CompanionAgentOptions>(
+    builder.Configuration.GetSection(CompanionAgentOptions.SectionName));
 builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
 builder.Services.AddCors(options =>
 {
