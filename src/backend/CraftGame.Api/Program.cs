@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using CraftGame.Api.Companion;
 using CraftGame.Api.Companion.Ollama;
 using CraftGame.Api.Companion.Prompts;
+using CraftGame.Api.Companion.Sanitization;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
 using CraftGame.Api.Hubs;
@@ -36,6 +37,7 @@ builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, cl
     client.BaseAddress = new Uri(options.OllamaBaseUrl);
 });
 builder.Services.AddSingleton<ICompanionPromptBuilder, CompanionPromptBuilder>();
+builder.Services.AddSingleton<ICompanionLineSanitizer, CompanionLineSanitizer>();
 builder.Services.AddSingleton<ICompanionAgent, DeterministicCompanionAgent>();
 builder.Services.AddCors(options =>
 {
