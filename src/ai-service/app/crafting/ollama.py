@@ -57,6 +57,8 @@ def _build_prompt(request: CraftRequest) -> str:
         "Return exactly one short result name, with no explanation.",
         "The result must be helpful, concrete, and plausible.",
         "Do not return either input element unchanged.",
+        "Do not concatenate the input names.",
+        "Prefer a new concept implied by the relationship between the inputs.",
         "Use title case when possible.",
         f"Combine: {request.element_a} + {request.element_b}.",
     ]

@@ -21,6 +21,20 @@ These combinations are deterministic and order-independent:
 
 Each baseline recipe includes useful-step and difficulty metadata. In this first version, that metadata is used by tests and documentation; it does not yet drive live level generation.
 
+## Semantic Concept Recipes
+
+The service also includes deterministic concept recipes for common alchemy-style discoveries that should feel like conceptual leaps rather than literal ingredient lists. Examples include:
+
+- `Fire + Earth -> Lava`
+- `Air + Steam -> Cloud`
+- `Earth + Rain -> Plant`
+- `Water + Dust -> Clay`
+- `Fire + Clay -> Brick`
+- `Energy + Swamp -> Life`
+- `Animal + Earth -> Horse`
+
+These recipes are intentionally authored. They keep important discoveries stable while letting the game move from primitive materials toward higher-level ideas.
+
 ## Local LLM Generation
 
 Unknown combinations use a constrained local Ollama provider when generation is enabled.
@@ -41,13 +55,14 @@ Generated results are accepted only when they are concise, name-like, and useful
 - 2 to 40 characters
 - letters, spaces, apostrophes, or hyphens only
 - not equal to either input element
+- not a concatenation or reuse of meaningful input words
 - not vague failure text such as `unknown`, `nothing`, `none`, or `error`
 
 Invalid results are discarded.
 
 ## Fallback Behavior
 
-If Ollama is unavailable, slow, disabled, or returns invalid output, the AI service returns a stable deterministic fallback name derived from the two input elements. This keeps crafting playable even when the model runtime is not available.
+If Ollama is unavailable, slow, disabled, or returns invalid output, the AI service returns a stable semantic fallback selected from concept categories such as air, water, earth, fire, life, and craft. The fallback deliberately avoids names that concatenate or repeat the input elements, so repeated crafting does not create long phrases like `Air Dust Earth Blend Catalyst`.
 
 ## Known Limitations
 
