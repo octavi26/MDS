@@ -18,6 +18,8 @@ services:
   ai-service:
     build:
       context: ./src/ai-service
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
     ports:
       - "8001:8001"
     volumes:
