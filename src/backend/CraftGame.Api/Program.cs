@@ -3,6 +3,7 @@ using CraftGame.Api.Companion;
 using CraftGame.Api.Companion.Ollama;
 using CraftGame.Api.Companion.Prompts;
 using CraftGame.Api.Companion.Sanitization;
+using CraftGame.Api.Crafting;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
 using CraftGame.Api.Hubs;
@@ -30,6 +31,14 @@ builder.Services.AddDbContext<CraftGameDbContext>(options =>
 });
 
 builder.Services.AddSignalR();
+builder.Services.Configure<AiCraftClientOptions>(
+    builder.Configuration.GetSection(AiCraftClientOptions.SectionName));
+builder.Services.AddHttpClient<IAiCraftClient, HttpAiCraftClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<AiCraftClientOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.TimeoutSeconds));
+});
 builder.Services.Configure<CompanionAgentOptions>(
     builder.Configuration.GetSection(CompanionAgentOptions.SectionName));
 builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, client) =>
@@ -76,8 +85,11 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
-    await db.Database.MigrateAsync();
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
+        await db.Database.MigrateAsync();
+    }
 }
 
 app.UseSerilogRequestLogging();
@@ -134,28 +146,42 @@ app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 app.MapPost("/api/craft", async (
     CraftRequest request,
     CraftGameDbContext db,
-    IHttpClientFactory httpClientFactory,
-    IConfiguration configuration) =>
+    IAiCraftClient aiCraftClient,
+    CancellationToken cancellationToken) =>
 {
     // 1. Sort element names to ensure deterministic combination lookup
     var elements = new[] { request.ElementA, request.ElementB }.OrderBy(e => e).ToList();
-    
+
+    var session = await db.GameSessions
+        .Include(s => s.Level)
+        .Include(s => s.InventoryItems)
+        .ThenInclude(si => si.Element)
+        .FirstOrDefaultAsync(s => s.Id == request.SessionId, cancellationToken);
+
+    if (session == null)
+    {
+        return Results.NotFound("Game session was not found.");
+    }
+
     // 2. Call AI Service to get the result of the combination
-    var aiServiceUrl = configuration["AiServiceUrl"] ?? "http://ai-service:8001";
-    var client = httpClientFactory.CreateClient();
-    
-    var response = await client.PostAsJsonAsync($"{aiServiceUrl}/craft", new {
-        element_a = elements[0],
-        element_b = elements[1]
-    });
+    var result = await aiCraftClient.CraftAsync(new AiCraftRequest(
+        ElementA: elements[0],
+        ElementB: elements[1],
+        LevelName: session.Level.Name,
+        LevelDifficulty: session.Level.Difficulty,
+        GoalElement: session.Level.GoalElementName,
+        Inventory: session.InventoryItems
+            .Select(si => si.Element.Name)
+            .OrderBy(name => name)
+            .ToList()), cancellationToken);
 
-    if (!response.IsSuccessStatusCode) return Results.Problem("AI Service failed to craft.");
-
-    var result = await response.Content.ReadFromJsonAsync<CraftResponse>();
-    if (result == null) return Results.Problem("Invalid response from AI Service.");
+    if (result == null || string.IsNullOrWhiteSpace(result.Result))
+    {
+        return Results.Problem("AI Service failed to craft.");
+    }
 
     // 3. Ensure the result element exists in the DB
-    var element = await db.Elements.FirstOrDefaultAsync(e => e.Name == result.Result);
+    var element = await db.Elements.FirstOrDefaultAsync(e => e.Name == result.Result, cancellationToken);
     if (element == null)
     {
         element = new Element
@@ -167,12 +193,12 @@ app.MapPost("/api/craft", async (
             IsStartingElement = false
         };
         db.Elements.Add(element);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     // 4. Add to session inventory if not already there
     var inventoryItem = await db.SessionInventories
-        .FirstOrDefaultAsync(si => si.GameSessionId == request.SessionId && si.ElementId == element.Id);
+        .FirstOrDefaultAsync(si => si.GameSessionId == request.SessionId && si.ElementId == element.Id, cancellationToken);
 
     if (inventoryItem == null)
     {
@@ -183,7 +209,7 @@ app.MapPost("/api/craft", async (
             ElementId = element.Id,
             Quantity = 1
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     return Results.Ok(new { 
@@ -200,6 +226,5 @@ app.Run();
 
 public record StartSessionRequest(Guid UserId, Guid LevelId);
 public record CraftRequest(Guid SessionId, string ElementA, string ElementB);
-public record CraftResponse(string Result);
 
 public partial class Program;
