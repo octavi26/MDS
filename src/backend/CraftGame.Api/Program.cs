@@ -143,6 +143,77 @@ app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 })
 .WithTags("Game");
 
+app.MapPost("/api/sessions/start", async (
+    StartSessionRequest request,
+    CraftGameDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var userExists = await db.Users.AnyAsync(u => u.Id == request.UserId, cancellationToken);
+    var levelExists = await db.Levels.AnyAsync(l => l.Id == request.LevelId, cancellationToken);
+
+    if (!userExists || !levelExists)
+    {
+        return Results.NotFound("User or level was not found.");
+    }
+
+    var startingElements = await db.Elements
+        .Where(e => e.IsStartingElement)
+        .OrderBy(e => e.Name)
+        .ToListAsync(cancellationToken);
+
+    var session = new GameSession
+    {
+        Id = Guid.NewGuid(),
+        UserId = request.UserId,
+        LevelId = request.LevelId,
+        StartTime = DateTime.UtcNow
+    };
+
+    db.GameSessions.Add(session);
+    db.SessionInventories.AddRange(startingElements.Select(element => new SessionInventory
+    {
+        Id = Guid.NewGuid(),
+        GameSessionId = session.Id,
+        ElementId = element.Id,
+        Quantity = 1
+    }));
+
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Ok(new { sessionId = session.Id });
+})
+.WithTags("Game");
+
+app.MapGet("/api/sessions/{sessionId:guid}", async (
+    Guid sessionId,
+    CraftGameDbContext db,
+    CancellationToken cancellationToken) =>
+{
+    var session = await db.GameSessions
+        .Include(s => s.InventoryItems)
+        .ThenInclude(si => si.Element)
+        .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+
+    if (session == null)
+    {
+        return Results.NotFound("Game session was not found.");
+    }
+
+    return Results.Ok(new
+    {
+        id = session.Id,
+        levelId = session.LevelId,
+        inventory = session.InventoryItems
+            .OrderBy(si => si.Element.Name)
+            .Select(si => new
+            {
+                name = si.Element.Name,
+                quantity = si.Quantity
+            })
+    });
+})
+.WithTags("Game");
+
 app.MapPost("/api/craft", async (
     CraftRequest request,
     CraftGameDbContext db,

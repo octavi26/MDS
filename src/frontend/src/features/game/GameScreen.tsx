@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, DropAnimation } from '@dnd-kit/core';
 import { ChevronLeft, Loader2 } from 'lucide-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/apiClient';
 import InventorySidebar from './InventorySidebar';
 import CraftingCanvas from './CraftingCanvas';
@@ -18,6 +18,7 @@ import ItemCard from './ItemCard';
 import CompanionBubble from './CompanionBubble';
 import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
+import { findOverlappingCanvasItem } from './craftingCollision';
 
 const USER_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
 
@@ -34,10 +35,12 @@ const dropAnimation: DropAnimation = {
 const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
-  const { addItem, updateItemPosition, canvasItems } = useGameStore();
+  const queryClient = useQueryClient();
+  const { addItem, updateItemPosition, combineItems, canvasItems } = useGameStore();
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [apiCompanionMessage, setApiCompanionMessage] = useState<string | null>(null);
+  const [craftingError, setCraftingError] = useState<string | null>(null);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
     queryKey: ['levels'],
@@ -76,6 +79,47 @@ const GameScreen: React.FC = () => {
     levelName: level?.name,
     goalName: level?.goalItem,
     inventory: level?.startingItems ?? [],
+  });
+
+  const craftMutation = useMutation({
+    mutationFn: ({
+      sourceId,
+      targetId,
+      elementA,
+      elementB,
+      x,
+      y,
+    }: {
+      sourceId: string;
+      targetId: string;
+      elementA: string;
+      elementB: string;
+      x: number;
+      y: number;
+    }) => {
+      if (!sessionId) {
+        throw new Error('Cannot craft without an active session');
+      }
+
+      return apiClient.craft(sessionId, elementA, elementB).then((result) => ({
+        result,
+        sourceId,
+        targetId,
+        x,
+        y,
+      }));
+    },
+    onSuccess: ({ result, sourceId, targetId, x, y }) => {
+      combineItems(sourceId, targetId, result.name, x, y);
+      localCompanion.notifyElementAdded(result.name);
+      setApiCompanionMessage(null);
+      setCraftingError(null);
+      void queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+    },
+    onError: () => {
+      setCraftingError('Combination failed. Try again.');
+      setApiCompanionMessage(null);
+    },
   });
 
   // Use API message if available (on start), otherwise use local companion logic
@@ -134,7 +178,23 @@ const GameScreen: React.FC = () => {
     } else if (data.type === 'canvas') {
       const item = canvasItems.find((i) => i.id === data.originId);
       if (item) {
-        updateItemPosition(item.id, item.x + delta.x, item.y + delta.y);
+        const nextX = item.x + delta.x;
+        const nextY = item.y + delta.y;
+        const targetItem = findOverlappingCanvasItem(item, nextX, nextY, canvasItems);
+
+        if (targetItem && sessionId && !craftMutation.isPending) {
+          craftMutation.mutate({
+            sourceId: item.id,
+            targetId: targetItem.id,
+            elementA: item.name,
+            elementB: targetItem.name,
+            x: (nextX + targetItem.x) / 2,
+            y: (nextY + targetItem.y) / 2,
+          });
+          return;
+        }
+
+        updateItemPosition(item.id, nextX, nextY);
       }
     }
   };
@@ -202,6 +262,15 @@ const GameScreen: React.FC = () => {
         <main className="flex-1 flex overflow-hidden relative">
           <InventorySidebar items={inventoryItems} />
           <CraftingCanvas />
+          {(craftMutation.isPending || craftingError) && (
+            <div className="absolute top-24 left-72 z-40 rounded-lg border border-zinc-700 bg-zinc-900/95 px-4 py-2 text-sm shadow-xl">
+              {craftMutation.isPending ? (
+                <span className="text-blue-300">Combining...</span>
+              ) : (
+                <span className="text-red-300">{craftingError}</span>
+              )}
+            </div>
+          )}
           
           <div className="absolute bottom-10 left-72 z-40">
             <CompanionBubble message={currentCompanionMessage} />

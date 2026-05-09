@@ -19,6 +19,12 @@ export interface SessionDetail {
   inventory: { name: string; quantity: number }[];
 }
 
+export interface CraftedElement {
+  name: string;
+  description: string;
+  icon: string;
+}
+
 export const apiClient = {
   async getLevels(): Promise<Level[]> {
     const response = await fetch(`${API_BASE_URL}/api/levels`);
@@ -39,6 +45,16 @@ export const apiClient = {
   async getSession(sessionId: string): Promise<SessionDetail> {
     const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}`);
     if (!response.ok) throw new Error('Failed to fetch session');
+    return response.json();
+  },
+
+  async craft(sessionId: string, elementA: string, elementB: string): Promise<CraftedElement> {
+    const response = await fetch(`${API_BASE_URL}/api/craft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, elementA, elementB }),
+    });
+    if (!response.ok) throw new Error('Failed to craft element');
     return response.json();
   },
 

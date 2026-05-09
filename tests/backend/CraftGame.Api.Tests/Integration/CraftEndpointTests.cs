@@ -15,6 +15,34 @@ namespace CraftGame.Api.Tests.Integration;
 public sealed class CraftEndpointTests
 {
     [Fact]
+    public async Task StartSession_CreatesSessionWithStartingInventory()
+    {
+        await using var factory = CreateFactory(new CapturingAiCraftClient(null));
+        await SeedUserLevelAndElementsAsync(factory);
+
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/sessions/start", new
+        {
+            userId = TestIds.UserId,
+            levelId = TestIds.LevelId
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<StartSessionResponse>();
+        Assert.NotNull(payload);
+        Assert.NotEqual(Guid.Empty, payload.SessionId);
+
+        var sessionResponse = await client.GetFromJsonAsync<SessionResponse>(
+            $"/api/sessions/{payload.SessionId}");
+
+        Assert.NotNull(sessionResponse);
+        Assert.Equal(TestIds.LevelId, sessionResponse.LevelId);
+        Assert.Equal(["Dust", "Fire"], sessionResponse.Inventory.Select(i => i.Name).ToArray());
+    }
+
+    [Fact]
     public async Task PostCraft_PassesSessionLevelContextToAiService()
     {
         var aiClient = new CapturingAiCraftClient(new AiCraftResult(
@@ -90,6 +118,39 @@ public sealed class CraftEndpointTests
 
     private static async Task SeedCraftSessionAsync(WebApplicationFactory<Program> factory)
     {
+        await SeedUserLevelAndElementsAsync(factory);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
+
+        db.GameSessions.Add(new GameSession
+        {
+            Id = TestIds.SessionId,
+            UserId = TestIds.UserId,
+            LevelId = TestIds.LevelId,
+            StartTime = DateTime.UtcNow
+        });
+        db.SessionInventories.AddRange(
+            new SessionInventory
+            {
+                Id = Guid.NewGuid(),
+                GameSessionId = TestIds.SessionId,
+                ElementId = TestIds.FireId,
+                Quantity = 1
+            },
+            new SessionInventory
+            {
+                Id = Guid.NewGuid(),
+                GameSessionId = TestIds.SessionId,
+                ElementId = TestIds.DustId,
+                Quantity = 1
+            });
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedUserLevelAndElementsAsync(WebApplicationFactory<Program> factory)
+    {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
 
@@ -122,29 +183,7 @@ public sealed class CraftEndpointTests
                 Name = "Dust",
                 Description = "A dusty element",
                 Icon = "dust",
-                IsStartingElement = false
-            });
-        db.GameSessions.Add(new GameSession
-        {
-            Id = TestIds.SessionId,
-            UserId = TestIds.UserId,
-            LevelId = TestIds.LevelId,
-            StartTime = DateTime.UtcNow
-        });
-        db.SessionInventories.AddRange(
-            new SessionInventory
-            {
-                Id = Guid.NewGuid(),
-                GameSessionId = TestIds.SessionId,
-                ElementId = TestIds.FireId,
-                Quantity = 1
-            },
-            new SessionInventory
-            {
-                Id = Guid.NewGuid(),
-                GameSessionId = TestIds.SessionId,
-                ElementId = TestIds.DustId,
-                Quantity = 1
+                IsStartingElement = true
             });
 
         await db.SaveChangesAsync();
@@ -171,4 +210,13 @@ public sealed class CraftEndpointTests
         public static readonly Guid FireId = Guid.Parse("10000000-0000-0000-0000-000000000004");
         public static readonly Guid DustId = Guid.Parse("10000000-0000-0000-0000-000000000005");
     }
+
+    private sealed record StartSessionResponse(Guid SessionId);
+
+    private sealed record SessionResponse(
+        Guid Id,
+        Guid LevelId,
+        IReadOnlyList<SessionInventoryResponse> Inventory);
+
+    private sealed record SessionInventoryResponse(string Name, int Quantity);
 }
