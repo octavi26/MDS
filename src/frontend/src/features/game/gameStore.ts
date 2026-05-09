@@ -11,6 +11,7 @@ interface GameState {
   canvasItems: CanvasItem[];
   addItem: (name: string, x: number, y: number) => void;
   updateItemPosition: (id: string, x: number, y: number) => void;
+  combineItems: (sourceId: string, targetId: string, resultName: string, x: number, y: number) => void;
   clearCanvas: () => void;
   cloneItem: (id: string) => void;
 }
@@ -29,6 +30,13 @@ export const useGameStore = create<GameState>((set) => ({
     canvasItems: state.canvasItems.map((item) => 
       item.id === id ? { ...item, x, y } : item
     )
+  })),
+
+  combineItems: (sourceId, targetId, resultName, x, y) => set((state) => ({
+    canvasItems: [
+      ...state.canvasItems.filter((item) => item.id !== sourceId && item.id !== targetId),
+      { id: `${resultName}-${Date.now()}-${Math.random()}`, name: resultName, x, y }
+    ]
   })),
 
   clearCanvas: () => set({ canvasItems: [] }),
