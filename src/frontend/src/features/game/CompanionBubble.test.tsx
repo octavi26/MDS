@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import CompanionBubble, { type ChatMessage } from './CompanionBubble';
 
 const mockMessages: ChatMessage[] = [
@@ -23,19 +23,21 @@ describe('CompanionBubble', () => {
     expect(preview).not.toBeInTheDocument();
   });
 
-  it('toggles the chat history panel when avatar is clicked', () => {
+  it('toggles the chat history panel when avatar is clicked', async () => {
     render(<CompanionBubble messages={mockMessages} />);
     const button = screen.getByRole('button');
     
     // Open
     fireEvent.click(button);
-    expect(screen.getByText('Forge Logs')).toBeInTheDocument();
+    expect(await screen.findByText('Forge Intelligence')).toBeInTheDocument();
     expect(screen.getByText('First message')).toBeInTheDocument();
-    expect(screen.getByText('Second message')).toBeInTheDocument();
+    expect(screen.getAllByText('Second message').length).toBeGreaterThan(0);
 
     // Close
     fireEvent.click(button);
-    expect(screen.queryByText('Forge Logs')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Forge Intelligence')).not.toBeInTheDocument();
+    });
   });
 
   it('shows the message count badge when closed', () => {

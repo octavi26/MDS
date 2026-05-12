@@ -11,16 +11,48 @@ export interface Item {
 }
 
 export const itemData: Record<string, string> = {
+  // Basic Elements
   'Water': '💧',
   'Fire': '🔥',
   'Earth': '🌱',
   'Air': '💨',
+  
+  // Tier 1 Combinations
   'Steam': '♨️',
   'Mud': '🌫️',
   'Rain': '🌧️',
   'Dust': '🌪️',
   'Lava': '🌋',
   'Stone': '🪨',
+  'Plant': '🌿',
+  'Sand': '🏖️',
+  'Cloud': '☁️',
+  
+  // Tier 2+ Combinations
+  'Metal': '⛓️',
+  'Glass': '💎',
+  'Steel': '🏗️',
+  'Obsidian': '🖤',
+  'Brick': '🧱',
+  'Life': '🧬',
+  'Energy': '⚡',
+  'Light': '☀️',
+  'Storm': '⛈️',
+  'Island': '🏝️',
+  'Mountain': '🏔️',
+  'Volcano': '🌋',
+  'Magma': '☄️',
+  'Ash': '🚬',
+  'Coal': '⬛',
+  'Diamond': '💠',
+  'Clay': '🍶',
+  'Pottery': '🏺',
+  'Human': '🧑',
+  'Tool': '🔨',
+  'Animal': '🐾',
+  'Fish': '🐟',
+  'Bird': '🐦',
+  'Horse': '🐎',
 };
 
 export const mockLevels: Level[] = [

@@ -37,14 +37,14 @@ describe('App', () => {
   it('renders the level selection screen', async () => {
     render(<App />)
 
-    expect(await screen.findByText('Craft Game')).toBeInTheDocument()
-    expect(await screen.findByText('Select a level to start your crafting journey')).toBeInTheDocument()
+    expect(await screen.findByText('Mocking Forge')).toBeInTheDocument()
+    expect(await screen.findByText('Neural Synthesis & Material Forgery')).toBeInTheDocument()
   })
 
   it('renders loaded levels', async () => {
     render(<App />)
     
-    expect(await screen.findByText('The First Step')).toBeInTheDocument()
-    expect(await screen.findByText("Nature's Recipe")).toBeInTheDocument()
+    expect((await screen.findAllByText('The First Step')).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText("Nature's Recipe")).length).toBeGreaterThan(0)
   })
 })
