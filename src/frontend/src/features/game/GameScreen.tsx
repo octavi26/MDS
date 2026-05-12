@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   DndContext,
@@ -8,17 +8,19 @@ import {
   DragOverlay,
   defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent, DropAnimation } from '@dnd-kit/core';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { DragEndEvent, DragStartEvent, DragMoveEvent, DropAnimation } from '@dnd-kit/core';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/apiClient';
 import InventorySidebar from './InventorySidebar';
 import CraftingCanvas from './CraftingCanvas';
 import ItemCard from './ItemCard';
-import CompanionBubble from './CompanionBubble';
+import SparkParticles from './SparkParticles';
+import CompanionBubble, { type ChatMessage } from './CompanionBubble';
 import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
-import { findOverlappingCanvasItem } from './craftingCollision';
+import { findOverlappingCanvasItem, CANVAS_ITEM_WIDTH, CANVAS_ITEM_HEIGHT } from './craftingCollision';
 
 const USER_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
 
@@ -32,15 +34,26 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
+interface DiscoveryEffect {
+  id: string;
+  x: number;
+  y: number;
+}
+
 const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addItem, updateItemPosition, combineItems, canvasItems } = useGameStore();
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
+  const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [apiCompanionMessage, setApiCompanionMessage] = useState<string | null>(null);
   const [craftingError, setCraftingError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [discoveries, setDiscoveries] = useState<DiscoveryEffect[]>([]);
+  
+  const canvasRef = React.useRef<HTMLDivElement>(null);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
     queryKey: ['levels'],
@@ -67,13 +80,15 @@ const GameScreen: React.FC = () => {
     if (levelId && !sessionId && !startSessionMutation.isPending) {
       startSessionMutation.mutate({ userId: USER_ID, lId: levelId });
     }
-  }, [levelId, sessionId]);
+  }, [levelId, sessionId, startSessionMutation]);
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: () => apiClient.getSession(sessionId!),
     enabled: !!sessionId,
   });
+
+  const inventoryItems = sessionData?.inventory.map(i => i.name) || level?.startingItems || [];
 
   const localCompanion = useCompanion({
     levelName: level?.name,
@@ -110,6 +125,23 @@ const GameScreen: React.FC = () => {
       }));
     },
     onSuccess: ({ result, sourceId, targetId, x, y }) => {
+      // Check if this is a new discovery
+      const isNew = !inventoryItems.includes(result.name);
+      
+      if (isNew) {
+        if (canvasRef.current) {
+          const rect = canvasRef.current.getBoundingClientRect();
+          setDiscoveries(prev => [
+            ...prev, 
+            { 
+              id: Date.now().toString(), 
+              x: x + rect.left + CANVAS_ITEM_WIDTH / 2, 
+              y: y + rect.top + CANVAS_ITEM_HEIGHT / 2 
+            }
+          ]);
+        }
+      }
+
       combineItems(sourceId, targetId, result.name, x, y);
       localCompanion.notifyElementAdded(result.name);
       setApiCompanionMessage(null);
@@ -122,18 +154,26 @@ const GameScreen: React.FC = () => {
     },
   });
 
-  // Use API message if available (on start), otherwise use local companion logic
   const currentCompanionMessage = apiCompanionMessage || localCompanion.message;
 
-  const previousCanvasCountRef = useRef(0);
   useEffect(() => {
-    const previous = previousCanvasCountRef.current;
-    if (previous > 0 && canvasItems.length === 0) {
-      localCompanion.notifyCanvasCleared();
-      setApiCompanionMessage(null); // Switch to local logic after first interaction
+    if (currentCompanionMessage) {
+      setChatMessages(prev => {
+        if (prev.length > 0 && prev[prev.length - 1].text === currentCompanionMessage) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            text: currentCompanionMessage,
+            sender: 'ai',
+            timestamp: new Date()
+          }
+        ];
+      });
     }
-    previousCanvasCountRef.current = canvasItems.length;
-  }, [canvasItems.length, localCompanion]);
+  }, [currentCompanionMessage]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -143,44 +183,110 @@ const GameScreen: React.FC = () => {
     })
   );
 
+  const [dragOffset, setDragOffset] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+
   const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
+    const { active, activatorEvent } = event;
     const data = active.data.current;
     if (data) {
       setActiveItem({ id: active.id as string, name: data.name, type: data.type });
+      
+      // Calculate where on the item the user clicked
+      const activator = activatorEvent as MouseEvent;
+      const rect = active.rect.current.initial;
+      if (rect) {
+        setDragOffset({
+          x: activator.clientX - rect.left,
+          y: activator.clientY - rect.top,
+        });
+      }
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over, delta } = event;
-    setActiveItem(null);
+  const handleDragMove = (event: DragMoveEvent) => {
+    const { delta, active, activatorEvent } = event;
+    const data = active.data.current;
+    if (!data || !canvasRef.current) return;
 
-    if (!over || over.id !== 'crafting-canvas') return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const activator = activatorEvent as MouseEvent;
+    const pointerX = activator.clientX + delta.x;
+    const pointerY = activator.clientY + delta.y;
+
+    let currentX = 0;
+    let currentY = 0;
+
+    if (data.type === 'inventory') {
+      currentX = pointerX - rect.left - CANVAS_ITEM_WIDTH / 2;
+      currentY = pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2;
+    } else {
+      currentX = pointerX - rect.left - dragOffset.x;
+      currentY = pointerY - rect.top - dragOffset.y;
+    }
+
+    const targetItem = findOverlappingCanvasItem(
+      { id: active.id as string, x: currentX, y: currentY, name: data.name },
+      currentX,
+      currentY,
+      canvasItems
+    );
+
+    setHoveredTargetId(targetItem?.id || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over, delta, activatorEvent } = event;
+    setActiveItem(null);
+    setHoveredTargetId(null);
+
+    if (!over || over.id !== 'crafting-canvas' || !canvasRef.current) return;
 
     const data = active.data.current;
     if (!data) return;
 
-    const canvasElement = document.querySelector('[ref-id="crafting-canvas-container"]');
-    if (!canvasElement) return;
-    
-    const rect = canvasElement.getBoundingClientRect();
+    const rect = canvasRef.current.getBoundingClientRect();
+    const activator = activatorEvent as MouseEvent;
+    const pointerX = activator.clientX + delta.x;
+    const pointerY = activator.clientY + delta.y;
+
+    let x = 0;
+    let y = 0;
 
     if (data.type === 'inventory') {
-      const clientX = (event.activatorEvent as MouseEvent).clientX + delta.x;
-      const clientY = (event.activatorEvent as MouseEvent).clientY + delta.y;
-      
-      const x = clientX - rect.left - 50; 
-      const y = clientY - rect.top - 25; 
-      
-      addItem(data.name, x, y);
-      localCompanion.notifyElementAdded(data.name);
-      setApiCompanionMessage(null); // Switch to local logic after first interaction
+      x = pointerX - rect.left - CANVAS_ITEM_WIDTH / 2;
+      y = pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2;
+    } else {
+      x = pointerX - rect.left - dragOffset.x;
+      y = pointerY - rect.top - dragOffset.y;
+    }
+
+
+    if (data.type === 'inventory') {
+      const targetItem = findOverlappingCanvasItem(
+        { id: active.id as string, x, y, name: data.name },
+        x,
+        y,
+        canvasItems
+      );
+
+      if (targetItem && sessionId && !craftMutation.isPending) {
+        craftMutation.mutate({
+          sourceId: 'inventory',
+          targetId: targetItem.id,
+          elementA: data.name,
+          elementB: targetItem.name,
+          x: (x + targetItem.x) / 2,
+          y: (y + targetItem.y) / 2,
+        });
+      } else {
+        addItem(data.name, x, y);
+        localCompanion.notifyElementAdded(data.name);
+        setApiCompanionMessage(null);
+      }
     } else if (data.type === 'canvas') {
       const item = canvasItems.find((i) => i.id === data.originId);
       if (item) {
-        const nextX = item.x + delta.x;
-        const nextY = item.y + delta.y;
-        const targetItem = findOverlappingCanvasItem(item, nextX, nextY, canvasItems);
+        const targetItem = findOverlappingCanvasItem(item, x, y, canvasItems);
 
         if (targetItem && sessionId && !craftMutation.isPending) {
           craftMutation.mutate({
@@ -188,13 +294,13 @@ const GameScreen: React.FC = () => {
             targetId: targetItem.id,
             elementA: item.name,
             elementB: targetItem.name,
-            x: (nextX + targetItem.x) / 2,
-            y: (nextY + targetItem.y) / 2,
+            x: (x + targetItem.x) / 2,
+            y: (y + targetItem.y) / 2,
           });
           return;
         }
 
-        updateItemPosition(item.id, nextX, nextY);
+        updateItemPosition(item.id, x, y);
       }
     }
   };
@@ -202,8 +308,8 @@ const GameScreen: React.FC = () => {
   if (levelsLoading || (sessionId && sessionLoading)) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <Loader2 className="animate-spin mr-2" />
-        <span>Loading Game...</span>
+        <Loader2 className="animate-spin mr-2 text-orange-500" />
+        <span className="magma-text font-black uppercase tracking-widest">Igniting Forge...</span>
       </div>
     );
   }
@@ -212,75 +318,125 @@ const GameScreen: React.FC = () => {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">Level Not Found</h1>
-          <p className="text-zinc-400 mb-8">The level you are looking for does not exist.</p>
+          <h1 className="text-3xl font-bold mb-4 magma-text">Forge Connection Lost</h1>
+          <p className="text-zinc-400 mb-8 font-medium">The requested blueprints could not be retrieved.</p>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg hover:bg-zinc-300 transition-colors"
+            className="px-8 py-3 bg-white/5 border border-white/10 text-zinc-100 font-bold rounded-2xl hover:bg-orange-600 transition-all shadow-xl"
           >
-            Back to Levels
+            Return to Armory
           </button>
         </div>
       </div>
     );
   }
 
-  const inventoryItems = sessionData?.inventory.map(i => i.name) || level.startingItems;
-
   return (
     <DndContext 
       sensors={sensors} 
       onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
     >
       <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
-        <header className="h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6 shrink-0 z-20">
-          <div className="flex items-center gap-4">
+        <header className="h-20 border-b border-white/5 bg-zinc-950/40 backdrop-blur-md flex items-center justify-between px-8 shrink-0 z-30">
+          <div className="flex items-center gap-6">
             <Link 
               to="/" 
-              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-100"
-              title="Back to Levels"
+              className="p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all text-zinc-400 hover:text-orange-500 group"
+              title="Return to Selection"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
             </Link>
-            <div>
-              <h1 className="text-lg font-bold leading-tight">{level.name}</h1>
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Mission</p>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-black leading-tight tracking-tighter magma-text uppercase">Mocking Forge</h1>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-black">{level.name}</p>
+              </div>
             </div>
           </div>
 
-          <div className="bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-700 flex items-center gap-3">
-            <span className="text-xs text-zinc-400 font-medium">Goal:</span>
-            <span className="text-sm font-bold text-blue-400">{level.goalItem}</span>
-          </div>
+          <motion.div 
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-zinc-900/40 px-6 py-2.5 rounded-2xl border border-white/5 backdrop-blur-md flex items-center gap-4 shadow-2xl"
+          >
+            <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Target Objective</span>
+            <div className="flex items-center gap-2 bg-orange-500/10 px-3 py-1 rounded-lg border border-orange-500/20">
+              <span className="text-xs font-black text-orange-500 uppercase tracking-tighter">{level.goalItem}</span>
+            </div>
+          </motion.div>
 
-          <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold">
-            P1
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">Operator</span>
+              <span className="text-xs font-bold text-zinc-300">OCTAV_01</span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/5 flex items-center justify-center shadow-2xl overflow-hidden relative group">
+              <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="text-xs font-black text-orange-500 relative z-10 tracking-tighter">OP-1</span>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 flex overflow-hidden relative">
+        <main className="flex-1 flex overflow-hidden relative bg-[#09090b]">
           <InventorySidebar items={inventoryItems} />
-          <CraftingCanvas />
-          {(craftMutation.isPending || craftingError) && (
-            <div className="absolute top-24 left-72 z-40 rounded-lg border border-zinc-700 bg-zinc-900/95 px-4 py-2 text-sm shadow-xl">
-              {craftMutation.isPending ? (
-                <span className="text-blue-300">Combining...</span>
-              ) : (
-                <span className="text-red-300">{craftingError}</span>
-              )}
-            </div>
-          )}
+          <CraftingCanvas hoveredTargetId={hoveredTargetId} canvasRef={canvasRef} />
           
-          <div className="absolute bottom-10 left-72 z-40">
-            <CompanionBubble message={currentCompanionMessage} />
-          </div>
+          <AnimatePresence>
+            {(craftMutation.isPending || craftingError) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20, x: '-50%' }}
+                animate={{ opacity: 1, y: 0, x: '-50%' }}
+                exit={{ opacity: 0, y: 20, x: '-50%' }}
+                className="absolute top-24 left-1/2 z-40 rounded-2xl border border-orange-500/20 bg-zinc-950/80 backdrop-blur-xl px-6 py-3 shadow-[0_0_50px_rgba(234,88,12,0.2)]"
+              >
+                {craftMutation.isPending ? (
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="animate-spin text-orange-500" size={18} />
+                    <span className="text-xs font-black text-orange-500 uppercase tracking-[0.2em]">Synthesizing Element...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-xs font-black text-red-400 uppercase tracking-[0.2em]">{craftingError}</span>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <CompanionBubble messages={chatMessages} />
+          
+          {discoveries.map(discovery => (
+            <SparkParticles
+              key={discovery.id}
+              x={discovery.x}
+              y={discovery.y}
+              onComplete={() => setDiscoveries(prev => prev.filter(d => d.id !== discovery.id))}
+            />
+          ))}
         </main>
       </div>
 
       <DragOverlay dropAnimation={dropAnimation}>
         {activeItem ? (
-          <ItemCard name={activeItem.name} isDragging />
+          <motion.div
+            initial={{ scale: 1, opacity: 1 }}
+            animate={{ 
+              scale: 1.01, 
+              opacity: 1,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.3)"
+            }}
+            transition={{ duration: 0.1 }}
+          >
+            <ItemCard 
+              name={activeItem.name} 
+              isDragging 
+              isMerging={!!hoveredTargetId}
+            />
+          </motion.div>
         ) : null}
       </DragOverlay>
     </DndContext>
