@@ -15,7 +15,7 @@ import { apiClient } from '../../api/apiClient';
 import InventorySidebar from './InventorySidebar';
 import CraftingCanvas from './CraftingCanvas';
 import ItemCard from './ItemCard';
-import CompanionBubble from './CompanionBubble';
+import CompanionBubble, { type ChatMessage } from './CompanionBubble';
 import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
 import { findOverlappingCanvasItem } from './craftingCollision';
@@ -41,6 +41,7 @@ const GameScreen: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [apiCompanionMessage, setApiCompanionMessage] = useState<string | null>(null);
   const [craftingError, setCraftingError] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
     queryKey: ['levels'],
@@ -125,6 +126,25 @@ const GameScreen: React.FC = () => {
   // Use API message if available (on start), otherwise use local companion logic
   const currentCompanionMessage = apiCompanionMessage || localCompanion.message;
 
+  useEffect(() => {
+    if (currentCompanionMessage) {
+      setChatMessages(prev => {
+        if (prev.length > 0 && prev[prev.length - 1].text === currentCompanionMessage) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            text: currentCompanionMessage,
+            sender: 'ai',
+            timestamp: new Date()
+          }
+        ];
+      });
+    }
+  }, [currentCompanionMessage]);
+
   const previousCanvasCountRef = useRef(0);
   useEffect(() => {
     const previous = previousCanvasCountRef.current;
@@ -203,7 +223,7 @@ const GameScreen: React.FC = () => {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
         <Loader2 className="animate-spin mr-2" />
-        <span>Loading Game...</span>
+        <span>Igniting Forge...</span>
       </div>
     );
   }
@@ -244,17 +264,17 @@ const GameScreen: React.FC = () => {
               <ChevronLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-lg font-bold leading-tight">{level.name}</h1>
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">Mission</p>
+              <h1 className="text-lg font-black leading-tight tracking-tight text-orange-500 uppercase">Mocking Forge</h1>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-bold">{level.name}</p>
             </div>
           </div>
 
-          <div className="bg-zinc-800 px-4 py-2 rounded-lg border border-zinc-700 flex items-center gap-3">
-            <span className="text-xs text-zinc-400 font-medium">Goal:</span>
-            <span className="text-sm font-bold text-blue-400">{level.goalItem}</span>
+          <div className="bg-orange-950/20 px-4 py-2 rounded-lg border border-orange-500/20 flex items-center gap-3">
+            <span className="text-xs text-orange-500/70 font-bold uppercase tracking-wider">Goal</span>
+            <span className="text-sm font-black text-orange-400 uppercase">{level.goalItem}</span>
           </div>
 
-          <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold">
+          <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-orange-500">
             P1
           </div>
         </header>
@@ -263,18 +283,16 @@ const GameScreen: React.FC = () => {
           <InventorySidebar items={inventoryItems} />
           <CraftingCanvas />
           {(craftMutation.isPending || craftingError) && (
-            <div className="absolute top-24 left-72 z-40 rounded-lg border border-zinc-700 bg-zinc-900/95 px-4 py-2 text-sm shadow-xl">
+            <div className="absolute top-24 left-72 z-40 rounded-lg border border-orange-900/50 bg-zinc-900/95 px-4 py-2 text-sm shadow-xl">
               {craftMutation.isPending ? (
-                <span className="text-blue-300">Combining...</span>
+                <span className="text-orange-300 animate-pulse">Forging...</span>
               ) : (
-                <span className="text-red-300">{craftingError}</span>
+                <span className="text-red-400 font-semibold">{craftingError}</span>
               )}
             </div>
           )}
           
-          <div className="absolute bottom-10 left-72 z-40">
-            <CompanionBubble message={currentCompanionMessage} />
-          </div>
+          <CompanionBubble messages={chatMessages} />
         </main>
       </div>
 

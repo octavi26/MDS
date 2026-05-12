@@ -5,6 +5,24 @@ export interface Level {
   startingItems: string[];
 }
 
+export interface Item {
+  name: string;
+  emoji: string;
+}
+
+export const itemData: Record<string, string> = {
+  'Water': '💧',
+  'Fire': '🔥',
+  'Earth': '🌱',
+  'Air': '💨',
+  'Steam': '♨️',
+  'Mud': '🌫️',
+  'Rain': '🌧️',
+  'Dust': '🌪️',
+  'Lava': '🌋',
+  'Stone': '🪨',
+};
+
 export const mockLevels: Level[] = [
   {
     id: '1',

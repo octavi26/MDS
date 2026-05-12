@@ -9,6 +9,7 @@ interface DraggableItemProps {
   onClick?: () => void;
   onDoubleClick?: () => void;
   style?: React.CSSProperties;
+  className?: string;
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({ 
@@ -17,7 +18,8 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   type, 
   onClick, 
   onDoubleClick,
-  style 
+  style,
+  className
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: id,
@@ -38,7 +40,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       {...listeners}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={type === 'canvas' ? 'absolute min-w-[100px]' : ''}
+      className={`${type === 'canvas' ? 'absolute min-w-[120px]' : ''} ${className || ''}`}
       style={itemStyle}
     >
       <ItemCard 

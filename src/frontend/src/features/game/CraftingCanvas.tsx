@@ -19,30 +19,31 @@ const CraftingCanvas: React.FC = () => {
       className="flex-1 relative bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:32px_32px] bg-zinc-950 flex flex-col overflow-hidden"
     >
       {/* Workspace Watermark */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] select-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] select-none">
         <div className="flex flex-col items-center">
-          <div className="w-64 h-64 border-[12px] border-zinc-100 rounded-full flex items-center justify-center">
-            <span className="text-8xl font-black">C</span>
+          <div className="w-64 h-64 border-[12px] border-orange-500/30 rounded-full flex items-center justify-center">
+            <span className="text-8xl font-black text-orange-600/30">M</span>
           </div>
-          <span className="mt-8 text-4xl font-bold tracking-[1em] uppercase">Laboratory</span>
+          <span className="mt-8 text-4xl font-black tracking-[0.5em] uppercase text-orange-700/30">Mocking Forge</span>
         </div>
       </div>
 
       {/* Canvas Header */}
       <div className="p-4 flex items-center justify-between pointer-events-none z-10">
-        <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest bg-zinc-900/50 px-2 py-1 rounded border border-zinc-800">
-          workspace_v1.0
+        <span className="text-[10px] font-mono text-orange-600/50 uppercase tracking-widest bg-orange-950/10 px-2 py-1 rounded border border-orange-900/20">
+          forge_v1.0_active
         </span>
       </div>
 
       {/* Render Canvas Items */}
       <div className="flex-1 relative">
-        {canvasItems.map((item) => (
+        {canvasItems.map((item, index) => (
           <DraggableItem
             key={item.id}
             id={item.id}
             name={item.name}
             type="canvas"
+            className={index === 0 ? "animate-proximity-glow" : ""}
             style={{
               left: item.x,
               top: item.y,
