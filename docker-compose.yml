@@ -19,11 +19,36 @@ services:
     build:
       context: ./src/ai-service
     environment:
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_BASE_URL: http://ollama:11434
     ports:
       - "8001:8001"
     volumes:
       - ai-media:/app/media
+    depends_on:
+      ollama:
+        condition: service_started
+
+  # Local LLM for the companion's context-aware lines. Runs fully in Docker and
+  # auto-downloads the model on first run (cached in the ollama-data volume), so
+  # the whole stack is zero-setup and identical on macOS, Windows and Linux.
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull qwen2.5:3b-instruct || true
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:3b-instruct"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
 
   backend:
     build:
@@ -32,17 +57,14 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=craftgame;Username=craftgame;Password=craftgame
-      # Use a local Ollama LLM for context-aware companion lines. Reaches the
-      # host's Ollama (port 11434). Falls back to deterministic lines if it's
-      # unreachable, so teammates without Ollama still get a working game.
+      # Context-aware companion lines come from the dockerized Ollama service.
+      # Falls back to deterministic lines if it's unreachable, so the game always
+      # works even while the model is still downloading.
       CompanionAgent__Enabled: "true"
       CompanionAgent__Provider: "ollama"
-      CompanionAgent__OllamaBaseUrl: "http://host.docker.internal:11434"
+      CompanionAgent__OllamaBaseUrl: "http://ollama:11434"
       CompanionAgent__OllamaModel: "qwen2.5:3b-instruct"
       CompanionAgent__TimeoutSeconds: "30"
-    extra_hosts:
-      # Lets Linux hosts resolve host.docker.internal (automatic on Mac/Windows).
-      - "host.docker.internal:host-gateway"
     ports:
       - "5088:8080"
     depends_on:
@@ -50,6 +72,8 @@ services:
         condition: service_healthy
       ai-service:
         condition: service_started
+      ollama:
+        condition: service_healthy
 
   frontend:
     build:
@@ -65,3 +89,4 @@ services:
 volumes:
   postgres-data:
   ai-media:
+  ollama-data:
