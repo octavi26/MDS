@@ -25,7 +25,24 @@ Open:
 - Backend readiness: http://localhost:5088/ready
 - AI service health: http://localhost:8001/health
 
-The frontend should only say that it works. That is intentional.
+### Companion voice (orc boss)
+
+The talking companion speaks context-aware, sarcastic lines in an "orc boss"
+voice. Everything runs locally inside Docker — **no manual setup on any OS**:
+
+- **Voice (TTS):** Piper + ffmpeg, baked into the `ai-service` image. Works the
+  same on macOS, Windows and Linux (the image is Linux; the Piper binary is
+  selected per architecture at build time).
+- **Lines (LLM):** a dockerized `ollama` service. On the **first**
+  `docker compose up`, it downloads the `qwen2.5:3b-instruct` model (~2 GB,
+  cached in the `ollama-data` volume), so the first start takes a few extra
+  minutes. Until the model is ready, the companion uses built-in fallback lines.
+
+Both pieces degrade gracefully: if TTS or the LLM is unavailable the game still
+works (text-only / deterministic lines). To change the model, edit
+`CompanionAgent__OllamaModel` in `docker-compose.yml`. On Linux with an NVIDIA
+GPU you can add a `deploy.resources` GPU reservation to the `ollama` service for
+faster generation; CPU is the default and works everywhere.
 
 ## What Is Prepared
 
