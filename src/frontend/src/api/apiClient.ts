@@ -7,6 +7,8 @@ export interface Level {
   difficulty: number;
   goalItem: string;
   startingItems: string[];
+  isCompleted: boolean;
+  isLocked: boolean;
 }
 
 export interface Session {
@@ -23,6 +25,7 @@ export interface CraftedElement {
   name: string;
   description: string;
   icon: string;
+  isGoalReached?: boolean;
 }
 
 export const apiClient = {
