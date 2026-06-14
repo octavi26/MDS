@@ -142,21 +142,46 @@ app.MapPost("/api/companion/comments", async (
 
 app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 {
-    var startingElements = await db.Elements
-        .Where(e => e.IsStartingElement)
-        .Select(e => e.Name)
+    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"); // In a real app, this would come from Auth
+
+    var levels = await db.Levels
+        .Include(l => l.StartingElements)
+        .OrderBy(l => l.Order)
         .ToListAsync();
 
-    return await db.Levels
-        .Select(l => new {
-            l.Id,
-            l.Name,
-            l.Description,
-            l.Difficulty,
-            GoalItem = l.GoalElementName,
-            StartingItems = startingElements
-        })
+    var completedLevelIds = await db.GameSessions
+        .Where(s => s.UserId == userId && s.IsCompleted)
+        .Select(s => s.LevelId)
+        .Distinct()
         .ToListAsync();
+
+    var result = new List<object>();
+    var maxCompletedOrder = levels
+        .Where(l => completedLevelIds.Contains(l.Id))
+        .Select(l => l.Order)
+        .DefaultIfEmpty(0)
+        .Max();
+
+    foreach (var level in levels)
+    {
+        var isCompleted = completedLevelIds.Contains(level.Id);
+        var isLocked = level.Order > 1 && level.Order > maxCompletedOrder + 1;
+
+        result.Add(new
+        {
+            level.Id,
+            level.Name,
+            level.Description,
+            level.Difficulty,
+            level.Order,
+            GoalItem = level.GoalElementName,
+            StartingItems = level.StartingElements.Select(e => e.Name).ToList(),
+            IsCompleted = isCompleted,
+            IsLocked = isLocked
+        });
+    }
+
+    return Results.Ok(result);
 })
 .WithTags("Game");
 
@@ -166,17 +191,14 @@ app.MapPost("/api/sessions/start", async (
     CancellationToken cancellationToken) =>
 {
     var userExists = await db.Users.AnyAsync(u => u.Id == request.UserId, cancellationToken);
-    var levelExists = await db.Levels.AnyAsync(l => l.Id == request.LevelId, cancellationToken);
+    var level = await db.Levels
+        .Include(l => l.StartingElements)
+        .FirstOrDefaultAsync(l => l.Id == request.LevelId, cancellationToken);
 
-    if (!userExists || !levelExists)
+    if (!userExists || level == null)
     {
         return Results.NotFound("User or level was not found.");
     }
-
-    var startingElements = await db.Elements
-        .Where(e => e.IsStartingElement)
-        .OrderBy(e => e.Name)
-        .ToListAsync(cancellationToken);
 
     var session = new GameSession
     {
@@ -187,7 +209,7 @@ app.MapPost("/api/sessions/start", async (
     };
 
     db.GameSessions.Add(session);
-    db.SessionInventories.AddRange(startingElements.Select(element => new SessionInventory
+    db.SessionInventories.AddRange(level.StartingElements.Select(element => new SessionInventory
     {
         Id = Guid.NewGuid(),
         GameSessionId = session.Id,
@@ -297,13 +319,22 @@ app.MapPost("/api/craft", async (
             ElementId = element.Id,
             Quantity = 1
         });
+        
+        // Check if level goal reached
+        if (element.Name.Equals(session.Level.GoalElementName, StringComparison.OrdinalIgnoreCase))
+        {
+            session.IsCompleted = true;
+            session.EndTime = DateTime.UtcNow;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
     return Results.Ok(new { 
         name = element.Name, 
         description = element.Description,
-        icon = element.Icon
+        icon = element.Icon,
+        isGoalReached = session.IsCompleted
     });
 })
 .WithTags("Game");

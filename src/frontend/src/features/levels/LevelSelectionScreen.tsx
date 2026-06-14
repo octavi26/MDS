@@ -85,47 +85,67 @@ const LevelSelectionScreen: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              onClick={() => navigate(`/game/${level.id}`)}
-              className="group relative cursor-pointer"
+              onClick={() => !level.isLocked && navigate(`/game/${level.id}`)}
+              className={`group relative ${level.isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {/* Card Container */}
-              <div className="glass-panel p-8 rounded-[2rem] border border-white/5 group-hover:border-orange-500/30 transition-all duration-500 group-hover:shadow-[0_0_50px_rgba(234,88,12,0.15)] group-active:scale-[0.98]">
+              <div className={`glass-panel p-8 rounded-[2rem] border ${level.isLocked ? 'border-white/5 opacity-50 grayscale' : 'border-white/5 group-hover:border-orange-500/30'} transition-all duration-500 ${!level.isLocked && 'group-hover:shadow-[0_0_50px_rgba(234,88,12,0.15)] group-active:scale-[0.98]'}`}>
                 {/* Header */}
                 <div className="flex items-start justify-between mb-8">
-                  <div className="p-3 rounded-2xl bg-orange-500/5 border border-orange-500/10 group-hover:bg-orange-500/10 group-hover:border-orange-500/30 transition-all duration-500">
-                    <Box className="text-zinc-600 group-hover:text-orange-500 transition-colors" size={24} />
+                  <div className={`p-3 rounded-2xl ${level.isLocked ? 'bg-zinc-900 border-zinc-800' : 'bg-orange-500/5 border border-orange-500/10 group-hover:bg-orange-500/10 group-hover:border-orange-500/30'} transition-all duration-500`}>
+                    {level.isLocked ? (
+                      <Zap className="text-zinc-700" size={24} />
+                    ) : (
+                      <Box className="text-zinc-600 group-hover:text-orange-500 transition-colors" size={24} />
+                    )}
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Index</span>
-                    <span className="text-sm font-bold text-zinc-400">#00{level.id}</span>
+                    {level.isCompleted ? (
+                      <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full mb-1">
+                        <span className="text-[8px] font-black text-green-500 uppercase tracking-widest">Completed</span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest block mb-1">Index</span>
+                        <span className="text-sm font-bold text-zinc-400">#00{index + 1}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="space-y-6 mb-10">
                   <div>
-                    <h2 className="text-2xl font-black text-zinc-100 group-hover:text-orange-400 transition-colors uppercase tracking-tight">
-                      {level.name.split(':')[1] || level.name}
+                    <h2 className={`text-2xl font-black ${level.isLocked ? 'text-zinc-600' : 'text-zinc-100 group-hover:text-orange-400'} transition-colors uppercase tracking-tight`}>
+                      {level.isLocked ? 'Locked Sector' : (level.name.split(':')[1] || level.name)}
                     </h2>
                     <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-1">
-                      {level.name.split(':')[0] || 'Mission'}
+                      {level.isLocked ? 'Data Encrypted' : (level.name.split(':')[0] || 'Mission')}
                     </p>
                   </div>
 
-                  <div className="bg-zinc-950/50 p-4 rounded-2xl border border-white/5 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Target className="text-orange-600" size={14} />
-                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Synthesis Goal</span>
+                  {!level.isLocked && (
+                    <div className="bg-zinc-950/50 p-4 rounded-2xl border border-white/5 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Target className="text-orange-600" size={14} />
+                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Synthesis Goal</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-black text-orange-400 uppercase tracking-tighter">{level.goalItem}</span>
+                        <div className="h-1.5 w-1.5 rounded-full bg-orange-500/50 animate-pulse" />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-black text-orange-400 uppercase tracking-tighter">{level.goalItem}</span>
-                      <div className="h-1.5 w-1.5 rounded-full bg-orange-500/50 animate-pulse" />
+                  )}
+                  
+                  {level.isLocked && (
+                    <div className="h-20 flex items-center justify-center border border-dashed border-white/5 rounded-2xl">
+                      <Zap className="text-zinc-800 animate-pulse" size={20} />
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                <div className={`flex items-center justify-between pt-6 border-t border-white/5 ${level.isLocked ? 'invisible' : ''}`}>
                   <div className="flex -space-x-2">
                     {level.startingItems.slice(0, 4).map((item, i) => (
                       <div 
@@ -146,7 +166,9 @@ const LevelSelectionScreen: React.FC = () => {
               </div>
               
               {/* Hover Glow Effect */}
-              <div className="absolute inset-0 bg-orange-500/5 blur-3xl rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              {!level.isLocked && (
+                <div className="absolute inset-0 bg-orange-500/5 blur-3xl rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              )}
             </motion.div>
           ))}
         </div>

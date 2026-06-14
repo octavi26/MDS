@@ -8,7 +8,7 @@ interface SparkParticlesProps {
 }
 
 const SparkParticles: React.FC<SparkParticlesProps> = ({ x, y, onComplete }) => {
-  const particleCount = 20;
+  const particleCount = 10; // Reduced from 20 to improve performance
   const particles = Array.from({ length: particleCount });
 
   return (
@@ -18,11 +18,11 @@ const SparkParticles: React.FC<SparkParticlesProps> = ({ x, y, onComplete }) => 
     >
       {particles.map((_, i) => {
         const angle = (i / particleCount) * Math.PI * 2;
-        const velocity = 50 + Math.random() * 150;
+        const velocity = 40 + Math.random() * 100;
         const targetX = Math.cos(angle) * velocity;
         const targetY = Math.sin(angle) * velocity;
-        const size = 2 + Math.random() * 4;
-        const duration = 0.5 + Math.random() * 1;
+        const size = 2 + Math.random() * 3;
+        const duration = 0.4 + Math.random() * 0.4;
 
         return (
           <motion.div
@@ -32,28 +32,19 @@ const SparkParticles: React.FC<SparkParticlesProps> = ({ x, y, onComplete }) => 
               x: targetX, 
               y: targetY, 
               opacity: 0, 
-              scale: 0,
-              rotate: Math.random() * 360 
+              scale: 0
             }}
-            transition={{ duration, ease: "easeOut" }}
+            transition={{ duration, ease: "linear" }} // Use linear for less CPU load
             onAnimationComplete={i === 0 ? onComplete : undefined}
-            className="absolute rounded-full bg-gradient-to-r from-orange-400 to-yellow-200"
+            className="absolute rounded-full bg-orange-400"
             style={{ 
               width: size, 
               height: size,
-              boxShadow: '0 0 10px rgba(251, 191, 36, 0.8)' 
+              willChange: 'transform, opacity' // Performance hint
             }}
           />
         );
       })}
-      
-      {/* Central Flash */}
-      <motion.div
-        initial={{ scale: 0, opacity: 1 }}
-        animate={{ scale: 4, opacity: 0 }}
-        transition={{ duration: 0.4 }}
-        className="absolute w-10 h-10 -left-5 -top-5 rounded-full bg-white blur-xl"
-      />
     </div>
   );
 };

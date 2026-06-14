@@ -3,6 +3,7 @@ using System;
 using CraftGame.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CraftGame.Api.Migrations
 {
     [DbContext(typeof(CraftGameDbContext))]
-    partial class CraftGameDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260614194410_LevelRedesignAndCleanup")]
+    partial class LevelRedesignAndCleanup
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,7 +54,7 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             Id = new Guid("b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e"),
-                            Description = "A basic water element",
+                            Description = "Liquid life",
                             Icon = "💧",
                             IsStartingElement = true,
                             Name = "Water"
@@ -59,7 +62,7 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             Id = new Guid("c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f"),
-                            Description = "A basic fire element",
+                            Description = "Burning passion",
                             Icon = "🔥",
                             IsStartingElement = true,
                             Name = "Fire"
@@ -67,7 +70,7 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             Id = new Guid("f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c"),
-                            Description = "A basic air element",
+                            Description = "Invisible gas",
                             Icon = "💨",
                             IsStartingElement = true,
                             Name = "Air"
@@ -75,62 +78,14 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             Id = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d"),
-                            Description = "A basic earth element",
+                            Description = "Solid ground",
                             Icon = "🌱",
                             IsStartingElement = true,
                             Name = "Earth"
                         },
                         new
                         {
-                            Id = new Guid("7bc855bd-5e73-4b78-8230-eb7d9f30f2a1"),
-                            Description = "Wet earth",
-                            Icon = "💩",
-                            IsStartingElement = false,
-                            Name = "Mud"
-                        },
-                        new
-                        {
-                            Id = new Guid("cd7f6f66-d9b0-4d52-9d47-3915235a0cf8"),
-                            Description = "Hot vapor",
-                            Icon = "💨",
-                            IsStartingElement = false,
-                            Name = "Steam"
-                        },
-                        new
-                        {
-                            Id = new Guid("0d367258-b056-4a63-b15d-441e3940feaf"),
-                            Description = "Pure power",
-                            Icon = "⚡",
-                            IsStartingElement = false,
-                            Name = "Energy"
-                        },
-                        new
-                        {
-                            Id = new Guid("37cf0b28-ecd2-4fc2-b758-83f21ca0e247"),
-                            Description = "Hard rock",
-                            Icon = "🪨",
-                            IsStartingElement = false,
-                            Name = "Stone"
-                        },
-                        new
-                        {
-                            Id = new Guid("fe8356fa-a630-479a-bd4b-55b35974d9d9"),
-                            Description = "Forged material",
-                            Icon = "⛓️",
-                            IsStartingElement = false,
-                            Name = "Metal"
-                        },
-                        new
-                        {
-                            Id = new Guid("27b7f07c-f5f8-434e-be87-2414d120759c"),
-                            Description = "Crafted instrument",
-                            Icon = "🛠️",
-                            IsStartingElement = false,
-                            Name = "Tool"
-                        },
-                        new
-                        {
-                            Id = new Guid("1e70e58b-c328-4a04-be4f-a2c16aae14eb"),
+                            Id = new Guid("afb2f800-d8ff-443c-8068-6cfd4a6d33cd"),
                             Description = "Organic material",
                             Icon = "🪵",
                             IsStartingElement = false,
@@ -138,55 +93,151 @@ namespace CraftGame.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("306c2345-be15-4fa4-8e2f-1dfe8d792643"),
-                            Description = "Rolling tool",
-                            Icon = "🎡",
+                            Id = new Guid("567ac8db-1929-47c2-8a91-73ec5d89b81b"),
+                            Description = "Heavy metal",
+                            Icon = "⛓️",
                             IsStartingElement = false,
-                            Name = "Wheel"
+                            Name = "Iron"
                         },
                         new
                         {
-                            Id = new Guid("a0f88725-69f2-462b-ace8-ac6a51e7d51b"),
-                            Description = "Machine core",
-                            Icon = "⚙️",
-                            IsStartingElement = false,
-                            Name = "Engine"
-                        },
-                        new
-                        {
-                            Id = new Guid("4e963255-ddfb-447d-b0e6-0237271f8d1d"),
-                            Description = "Vehicle",
-                            Icon = "🚗",
-                            IsStartingElement = false,
-                            Name = "Car"
-                        },
-                        new
-                        {
-                            Id = new Guid("a60f7fcc-619a-4242-b369-3f8be35cac4e"),
-                            Description = "The spark of existence",
+                            Id = new Guid("b21ea236-2e7c-4936-9763-bd795aa4e5b9"),
+                            Description = "The vital spark",
                             Icon = "✨",
                             IsStartingElement = false,
                             Name = "Life"
                         },
                         new
                         {
-                            Id = new Guid("e680e741-81cd-4a3a-a7a1-8ec8671b746c"),
-                            Description = "Biological blueprint",
-                            Icon = "🧬",
+                            Id = new Guid("8fb9a9ff-55eb-4273-b5c5-d9ceb1b38644"),
+                            Description = "Hard rock",
+                            Icon = "🪨",
                             IsStartingElement = false,
-                            Name = "DNA"
+                            Name = "Stone"
                         },
                         new
                         {
-                            Id = new Guid("d7cace2b-6a2b-4a76-8da8-78561e18ed87"),
-                            Description = "Sentient life",
-                            Icon = "🧍",
+                            Id = new Guid("b1bbd332-f39e-4c73-9a2f-955564a08a61"),
+                            Description = "Potential growth",
+                            Icon = "🌱",
                             IsStartingElement = false,
-                            Name = "Human"
+                            Name = "Seed"
                         },
                         new
                         {
-                            Id = new Guid("6e27bc6a-9790-4ddb-8b2b-1d68349544dd"),
+                            Id = new Guid("2bfb6a22-65af-49e8-b90f-b495fd7a0b23"),
+                            Description = "Abstract thought",
+                            Icon = "🧠",
+                            IsStartingElement = false,
+                            Name = "Logic"
+                        },
+                        new
+                        {
+                            Id = new Guid("389e82c2-0154-4670-9a6e-66c14f3da6e6"),
+                            Description = "Wet earth",
+                            Icon = "💩",
+                            IsStartingElement = false,
+                            Name = "Mud"
+                        },
+                        new
+                        {
+                            Id = new Guid("9306f641-61f4-4914-8110-52298f43770d"),
+                            Description = "Pure power",
+                            Icon = "⚡",
+                            IsStartingElement = false,
+                            Name = "Energy"
+                        },
+                        new
+                        {
+                            Id = new Guid("08ac0228-8db1-4669-aaf2-43713c2b4848"),
+                            Description = "Life in the machine",
+                            Icon = "🤖",
+                            IsStartingElement = false,
+                            Name = "AI"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3d21c24-e7a2-4558-83b3-5e2ca8160332"),
+                            Description = "Vapor power",
+                            Icon = "💨",
+                            IsStartingElement = false,
+                            Name = "Steam"
+                        },
+                        new
+                        {
+                            Id = new Guid("c86386bc-ad04-44cf-9eb2-208b4fadfd39"),
+                            Description = "Fine particles",
+                            Icon = "🌫️",
+                            IsStartingElement = false,
+                            Name = "Dust"
+                        },
+                        new
+                        {
+                            Id = new Guid("e41e62bf-5036-4a3b-9d34-8ea5b95e87fc"),
+                            Description = "Burnt wood",
+                            Icon = "🌑",
+                            IsStartingElement = false,
+                            Name = "Charcoal"
+                        },
+                        new
+                        {
+                            Id = new Guid("81665166-af36-413d-8657-c1e00d7fee91"),
+                            Description = "Strong alloy",
+                            Icon = "🛡️",
+                            IsStartingElement = false,
+                            Name = "Steel"
+                        },
+                        new
+                        {
+                            Id = new Guid("78b60ed0-f0aa-4eb1-8e1e-5e2601dd1143"),
+                            Description = "Cut wood",
+                            Icon = "🪵",
+                            IsStartingElement = false,
+                            Name = "Plank"
+                        },
+                        new
+                        {
+                            Id = new Guid("032d09be-7e8b-4b6e-b662-6488f4863215"),
+                            Description = "Steel blade",
+                            Icon = "⚔️",
+                            IsStartingElement = false,
+                            Name = "Sword"
+                        },
+                        new
+                        {
+                            Id = new Guid("f12f48ec-32d5-4abc-a01c-a362d3029d5e"),
+                            Description = "Green growth",
+                            Icon = "🌿",
+                            IsStartingElement = false,
+                            Name = "Plant"
+                        },
+                        new
+                        {
+                            Id = new Guid("8b5ef11f-dd86-4863-a7d5-c7498cab971d"),
+                            Description = "Giant plant",
+                            Icon = "🌳",
+                            IsStartingElement = false,
+                            Name = "Tree"
+                        },
+                        new
+                        {
+                            Id = new Guid("b58e0aad-2bd6-40f2-8698-79a9119f8271"),
+                            Description = "Sea of trees",
+                            Icon = "🌲",
+                            IsStartingElement = false,
+                            Name = "Forest"
+                        },
+                        new
+                        {
+                            Id = new Guid("c615e804-8d53-48fa-a335-a67c502bb5a3"),
+                            Description = "Source of motion",
+                            Icon = "⚙️",
+                            IsStartingElement = false,
+                            Name = "Engine"
+                        },
+                        new
+                        {
+                            Id = new Guid("9269009f-a7ca-4a9f-8d23-ee783cdcccfd"),
                             Description = "Mechanical life",
                             Icon = "🤖",
                             IsStartingElement = false,
@@ -194,11 +245,35 @@ namespace CraftGame.Api.Migrations
                         },
                         new
                         {
-                            Id = new Guid("205734b2-0254-4e7f-b095-b8ac49bd5c4b"),
-                            Description = "Human-Machine hybrid",
-                            Icon = "🦾",
+                            Id = new Guid("62dd35c1-1f68-45e5-a886-994e2d35e12d"),
+                            Description = "Cloudy residue",
+                            Icon = "🚬",
                             IsStartingElement = false,
-                            Name = "Cyborg"
+                            Name = "Smoke"
+                        },
+                        new
+                        {
+                            Id = new Guid("965e9f41-3d2d-4a05-a58b-5880a1aa1749"),
+                            Description = "Baked mud",
+                            Icon = "🧱",
+                            IsStartingElement = false,
+                            Name = "Brick"
+                        },
+                        new
+                        {
+                            Id = new Guid("ab31d349-3e07-4e95-888b-0a6291b52aeb"),
+                            Description = "Living being",
+                            Icon = "🐒",
+                            IsStartingElement = false,
+                            Name = "Creature"
+                        },
+                        new
+                        {
+                            Id = new Guid("82143aec-f657-4929-bd8a-3d8d6e190f14"),
+                            Description = "Silicone brain",
+                            Icon = "🔲",
+                            IsStartingElement = false,
+                            Name = "Chip"
                         });
                 });
 
@@ -264,91 +339,91 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            Description = "The journey begins. Combine Fire and Water to create Steam.",
+                            Description = "Start with only Fire. Find Smoke.",
                             Difficulty = 1,
-                            GoalElementName = "Steam",
-                            Name = "Mission: First Vapor",
+                            GoalElementName = "Smoke",
+                            Name = "Mission: Thermal Start",
                             Order = 1
                         },
                         new
                         {
                             Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            Description = "Earth meets Water. Find Mud.",
+                            Description = "Water meets Air. Create Steam.",
                             Difficulty = 1,
-                            GoalElementName = "Mud",
-                            Name = "Mission: Muddy Path",
+                            GoalElementName = "Steam",
+                            Name = "Mission: The Mist",
                             Order = 2
                         },
                         new
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            Description = "Combine Fire and Mud to bake a Stone.",
-                            Difficulty = 2,
-                            GoalElementName = "Stone",
-                            Name = "Mission: Solid Base",
+                            Description = "Water, Earth, and Fire. Find Mud.",
+                            Difficulty = 1,
+                            GoalElementName = "Mud",
+                            Name = "Mission: Foundation",
                             Order = 3
                         },
                         new
                         {
                             Id = new Guid("44444444-4444-4444-4444-444444444444"),
-                            Description = "Extreme heat on Stone reveals Metal.",
+                            Description = "Mud, Fire, and Air. Create Brick.",
                             Difficulty = 2,
-                            GoalElementName = "Metal",
-                            Name = "Mission: Metal Age",
+                            GoalElementName = "Brick",
+                            Name = "Mission: Alchemy",
                             Order = 4
                         },
                         new
                         {
                             Id = new Guid("55555555-5555-5555-5555-555555555555"),
-                            Description = "Use Metal and Wood to craft a Tool.",
+                            Description = "Seed, Water, Earth, and Air. Create a Plant.",
                             Difficulty = 3,
-                            GoalElementName = "Tool",
-                            Name = "Mission: Tools of Trade",
+                            GoalElementName = "Plant",
+                            Name = "Mission: Botany",
                             Order = 5
                         },
                         new
                         {
                             Id = new Guid("66666666-6666-6666-6666-666666666666"),
-                            Description = "A Tool and Wood create the Wheel.",
-                            Difficulty = 3,
-                            GoalElementName = "Wheel",
-                            Name = "Mission: The Wheel",
+                            Description = "Iron, Wood, and Fire. Forge Steel.",
+                            Difficulty = 4,
+                            GoalElementName = "Steel",
+                            Name = "Mission: Blacksmith",
                             Order = 6
                         },
                         new
                         {
                             Id = new Guid("77777777-7777-7777-7777-777777777777"),
-                            Description = "Steam power and Metal give birth to the Engine.",
-                            Difficulty = 4,
+                            Description = "Steel, Steam, and Logic. Create an Engine.",
+                            Difficulty = 5,
                             GoalElementName = "Engine",
-                            Name = "Mission: The Engine",
+                            Name = "Mission: Industry",
                             Order = 7
                         },
                         new
                         {
                             Id = new Guid("88888888-8888-8888-8888-888888888888"),
-                            Description = "Assemble a Car from an Engine and Wheels.",
-                            Difficulty = 5,
-                            GoalElementName = "Car",
-                            Name = "Mission: Transportation",
+                            Description = "Life, Water, and Earth. Create a Creature.",
+                            Difficulty = 6,
+                            GoalElementName = "Creature",
+                            Name = "Mission: Vitality",
                             Order = 8
                         },
                         new
                         {
                             Id = new Guid("99999999-9999-9999-9999-999999999999"),
-                            Description = "Infuse Life into DNA to create a Human.",
-                            Difficulty = 6,
-                            GoalElementName = "Human",
-                            Name = "Mission: Biotechnology",
+                            Description = "Energy, Logic, and Iron. Create a Chip.",
+                            Difficulty = 7,
+                            GoalElementName = "Chip",
+                            Name = "Mission: Digital",
                             Order = 9
                         },
                         new
                         {
                             Id = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-                            Description = "The ultimate union. Merge Human and Robot into a Cyborg.",
+                            Description = "Chip, Life, and Steel. Create a Robot.",
                             Difficulty = 8,
-                            GoalElementName = "Cyborg",
-                            Name = "Mission: The Singularity",
+                            GoalElementName = "Robot",
+                            Name = "Mission: Singularity",
                             Order = 10
                         });
                 });
@@ -427,17 +502,22 @@ namespace CraftGame.Api.Migrations
                         new
                         {
                             ElementId = new Guid("b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e"),
-                            LevelId = new Guid("11111111-1111-1111-1111-111111111111")
+                            LevelId = new Guid("22222222-2222-2222-2222-222222222222")
                         },
                         new
                         {
-                            ElementId = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d"),
+                            ElementId = new Guid("f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c"),
                             LevelId = new Guid("22222222-2222-2222-2222-222222222222")
                         },
                         new
                         {
                             ElementId = new Guid("b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e"),
-                            LevelId = new Guid("22222222-2222-2222-2222-222222222222")
+                            LevelId = new Guid("33333333-3333-3333-3333-333333333333")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d"),
+                            LevelId = new Guid("33333333-3333-3333-3333-333333333333")
                         },
                         new
                         {
@@ -446,8 +526,8 @@ namespace CraftGame.Api.Migrations
                         },
                         new
                         {
-                            ElementId = new Guid("7bc855bd-5e73-4b78-8230-eb7d9f30f2a1"),
-                            LevelId = new Guid("33333333-3333-3333-3333-333333333333")
+                            ElementId = new Guid("389e82c2-0154-4670-9a6e-66c14f3da6e6"),
+                            LevelId = new Guid("44444444-4444-4444-4444-444444444444")
                         },
                         new
                         {
@@ -456,77 +536,102 @@ namespace CraftGame.Api.Migrations
                         },
                         new
                         {
-                            ElementId = new Guid("37cf0b28-ecd2-4fc2-b758-83f21ca0e247"),
+                            ElementId = new Guid("f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c"),
                             LevelId = new Guid("44444444-4444-4444-4444-444444444444")
                         },
                         new
                         {
-                            ElementId = new Guid("fe8356fa-a630-479a-bd4b-55b35974d9d9"),
+                            ElementId = new Guid("b1bbd332-f39e-4c73-9a2f-955564a08a61"),
                             LevelId = new Guid("55555555-5555-5555-5555-555555555555")
                         },
                         new
                         {
-                            ElementId = new Guid("1e70e58b-c328-4a04-be4f-a2c16aae14eb"),
+                            ElementId = new Guid("b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e"),
                             LevelId = new Guid("55555555-5555-5555-5555-555555555555")
                         },
                         new
                         {
-                            ElementId = new Guid("27b7f07c-f5f8-434e-be87-2414d120759c"),
+                            ElementId = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d"),
+                            LevelId = new Guid("55555555-5555-5555-5555-555555555555")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c"),
+                            LevelId = new Guid("55555555-5555-5555-5555-555555555555")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("567ac8db-1929-47c2-8a91-73ec5d89b81b"),
                             LevelId = new Guid("66666666-6666-6666-6666-666666666666")
                         },
                         new
                         {
-                            ElementId = new Guid("1e70e58b-c328-4a04-be4f-a2c16aae14eb"),
+                            ElementId = new Guid("afb2f800-d8ff-443c-8068-6cfd4a6d33cd"),
                             LevelId = new Guid("66666666-6666-6666-6666-666666666666")
-                        },
-                        new
-                        {
-                            ElementId = new Guid("cd7f6f66-d9b0-4d52-9d47-3915235a0cf8"),
-                            LevelId = new Guid("77777777-7777-7777-7777-777777777777")
-                        },
-                        new
-                        {
-                            ElementId = new Guid("fe8356fa-a630-479a-bd4b-55b35974d9d9"),
-                            LevelId = new Guid("77777777-7777-7777-7777-777777777777")
                         },
                         new
                         {
                             ElementId = new Guid("c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f"),
+                            LevelId = new Guid("66666666-6666-6666-6666-666666666666")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("81665166-af36-413d-8657-c1e00d7fee91"),
                             LevelId = new Guid("77777777-7777-7777-7777-777777777777")
                         },
                         new
                         {
-                            ElementId = new Guid("a0f88725-69f2-462b-ace8-ac6a51e7d51b"),
+                            ElementId = new Guid("c3d21c24-e7a2-4558-83b3-5e2ca8160332"),
+                            LevelId = new Guid("77777777-7777-7777-7777-777777777777")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("2bfb6a22-65af-49e8-b90f-b495fd7a0b23"),
+                            LevelId = new Guid("77777777-7777-7777-7777-777777777777")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("b21ea236-2e7c-4936-9763-bd795aa4e5b9"),
                             LevelId = new Guid("88888888-8888-8888-8888-888888888888")
                         },
                         new
                         {
-                            ElementId = new Guid("306c2345-be15-4fa4-8e2f-1dfe8d792643"),
+                            ElementId = new Guid("b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e"),
                             LevelId = new Guid("88888888-8888-8888-8888-888888888888")
                         },
                         new
                         {
-                            ElementId = new Guid("a60f7fcc-619a-4242-b369-3f8be35cac4e"),
+                            ElementId = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d"),
+                            LevelId = new Guid("88888888-8888-8888-8888-888888888888")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("9306f641-61f4-4914-8110-52298f43770d"),
                             LevelId = new Guid("99999999-9999-9999-9999-999999999999")
                         },
                         new
                         {
-                            ElementId = new Guid("e680e741-81cd-4a3a-a7a1-8ec8671b746c"),
+                            ElementId = new Guid("2bfb6a22-65af-49e8-b90f-b495fd7a0b23"),
                             LevelId = new Guid("99999999-9999-9999-9999-999999999999")
                         },
                         new
                         {
-                            ElementId = new Guid("d7cace2b-6a2b-4a76-8da8-78561e18ed87"),
+                            ElementId = new Guid("567ac8db-1929-47c2-8a91-73ec5d89b81b"),
+                            LevelId = new Guid("99999999-9999-9999-9999-999999999999")
+                        },
+                        new
+                        {
+                            ElementId = new Guid("08ac0228-8db1-4669-aaf2-43713c2b4848"),
                             LevelId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
                         },
                         new
                         {
-                            ElementId = new Guid("6e27bc6a-9790-4ddb-8b2b-1d68349544dd"),
+                            ElementId = new Guid("b21ea236-2e7c-4936-9763-bd795aa4e5b9"),
                             LevelId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
                         },
                         new
                         {
-                            ElementId = new Guid("0d367258-b056-4a63-b15d-441e3940feaf"),
+                            ElementId = new Guid("81665166-af36-413d-8657-c1e00d7fee91"),
                             LevelId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
                         });
                 });

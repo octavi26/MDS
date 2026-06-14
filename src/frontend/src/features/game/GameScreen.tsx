@@ -10,7 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DragEndEvent, DragStartEvent, DragMoveEvent, DropAnimation } from '@dnd-kit/core';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, Loader2, Zap } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../api/apiClient';
 import InventorySidebar from './InventorySidebar';
@@ -44,7 +44,7 @@ const GameScreen: React.FC = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { addItem, updateItemPosition, combineItems, canvasItems } = useGameStore();
+  const { addItem, updateItemPosition, combineItems, canvasItems, clearCanvas } = useGameStore();
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -52,9 +52,17 @@ const GameScreen: React.FC = () => {
   const [craftingError, setCraftingError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [discoveries, setDiscoveries] = useState<DiscoveryEffect[]>([]);
+  const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(false);
 
   const canvasRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Clear canvas and reset completion when entering a new level
+    clearCanvas();
+    setIsLevelComplete(false);
+    setSessionId(null); // Reset session to force new one for new level
+  }, [levelId, clearCanvas]);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
     queryKey: ['levels'],
@@ -144,17 +152,46 @@ const GameScreen: React.FC = () => {
         }
       }
 
+      if (result.isGoalReached) {
+        setIsLevelComplete(true);
+        if (canvasRef.current) {
+          const rect = canvasRef.current.getBoundingClientRect();
+          const goalDiscoveryX = x + rect.left + CANVAS_ITEM_WIDTH / 2;
+          const goalDiscoveryY = y + rect.top + CANVAS_ITEM_HEIGHT / 2;
+          
+          // Large celebration burst
+          const bursts = Array.from({ length: 8 }).map((_, i) => ({
+            id: `goal-${Date.now()}-${i}`,
+            x: goalDiscoveryX + (Math.random() - 0.5) * 200,
+            y: goalDiscoveryY + (Math.random() - 0.5) * 200
+          }));
+          setDiscoveries(prev => [...prev, ...bursts]);
+        }
+      }
+
       combineItems(sourceId, targetId, result.name, x, y);
       localCompanion.notifyElementAdded(result.name);
       setApiCompanionMessage(null);
       setCraftingError(null);
       void queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+      void queryClient.invalidateQueries({ queryKey: ['levels'] });
     },
     onError: () => {
       setCraftingError('Combination failed. Try again.');
       setApiCompanionMessage(null);
     },
   });
+
+  const handleNextLevel = () => {
+    if (!levels || !level) return;
+    const currentIndex = levels.findIndex(l => l.id === level.id);
+    const nextLevel = levels[currentIndex + 1];
+    if (nextLevel) {
+      navigate(`/game/${nextLevel.id}`);
+    } else {
+      navigate('/');
+    }
+  };
 
   const currentCompanionMessage = apiCompanionMessage || localCompanion.message;
 
@@ -423,6 +460,55 @@ const GameScreen: React.FC = () => {
               onComplete={() => setDiscoveries(prev => prev.filter(d => d.id !== discovery.id))}
             />
           ))}
+
+          <AnimatePresence>
+            {isLevelComplete && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/60 backdrop-blur-md p-6"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="max-w-md w-full glass-panel p-10 rounded-[2.5rem] border border-orange-500/30 shadow-[0_0_100px_rgba(234,88,12,0.2)] text-center relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent" />
+                  
+                  <div className="mb-8 flex justify-center">
+                    <div className="p-5 rounded-full bg-orange-500/10 border border-orange-500/20 shadow-[0_0_30px_rgba(234,88,12,0.2)]">
+                      <Zap className="text-orange-500 animate-pulse" size={40} />
+                    </div>
+                  </div>
+
+                  <h2 className="text-4xl font-black magma-text uppercase tracking-tighter mb-2">Synthesis Successful</h2>
+                  <p className="text-zinc-400 font-medium mb-10 text-sm uppercase tracking-widest">Blueprint "{level.goalItem}" Authenticated</p>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <button
+                      onClick={handleNextLevel}
+                      className="w-full py-4 bg-orange-500 text-zinc-950 font-black uppercase tracking-widest rounded-2xl hover:bg-orange-400 transition-all shadow-[0_0_30px_rgba(234,88,12,0.3)] active:scale-95"
+                    >
+                      Advance to Next Sector
+                    </button>
+                    <button
+                      onClick={() => setIsLevelComplete(false)}
+                      className="w-full py-4 bg-white/5 border border-white/10 text-zinc-400 font-black uppercase tracking-widest rounded-2xl hover:bg-white/10 transition-all active:scale-95"
+                    >
+                      Continue Forgery
+                    </button>
+                    <Link
+                      to="/"
+                      className="w-full py-4 text-zinc-600 font-black uppercase tracking-widest text-[10px] hover:text-zinc-400 transition-colors"
+                    >
+                      Return to Selection
+                    </Link>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
 
