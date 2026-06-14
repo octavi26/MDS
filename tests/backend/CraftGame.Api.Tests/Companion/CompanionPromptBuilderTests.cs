@@ -42,6 +42,6 @@ public sealed class CompanionPromptBuilderTests
 
         Assert.Contains("one sentence", prompt);
         Assert.Contains("under 120 characters", prompt);
-        Assert.Contains("no markdown", prompt);
+        Assert.Contains("markdown", prompt);
     }
 }

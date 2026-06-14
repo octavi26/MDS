@@ -32,6 +32,17 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=craftgame;Username=craftgame;Password=craftgame
+      # Use a local Ollama LLM for context-aware companion lines. Reaches the
+      # host's Ollama (port 11434). Falls back to deterministic lines if it's
+      # unreachable, so teammates without Ollama still get a working game.
+      CompanionAgent__Enabled: "true"
+      CompanionAgent__Provider: "ollama"
+      CompanionAgent__OllamaBaseUrl: "http://host.docker.internal:11434"
+      CompanionAgent__OllamaModel: "qwen2.5:3b-instruct"
+      CompanionAgent__TimeoutSeconds: "30"
+    extra_hosts:
+      # Lets Linux hosts resolve host.docker.internal (automatic on Mac/Windows).
+      - "host.docker.internal:host-gateway"
     ports:
       - "5088:8080"
     depends_on:

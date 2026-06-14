@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, X, Cpu } from 'lucide-react';
+import { Terminal, X, Cpu, Volume2, VolumeX } from 'lucide-react';
 
 export interface ChatMessage {
   id: string;
@@ -11,9 +11,11 @@ export interface ChatMessage {
 
 interface CompanionBubbleProps {
   messages: ChatMessage[];
+  muted?: boolean;
+  onToggleMute?: () => void;
 }
 
-const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages }) => {
+const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages, muted = false, onToggleMute }) => {
   const [isOpen, setIsOpen] = useState(false);
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
 
@@ -109,8 +111,23 @@ const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages }) => {
         )}
       </AnimatePresence>
 
+      {/* Voice Mute Toggle */}
+      {onToggleMute && (
+        <button
+          onClick={onToggleMute}
+          title={muted ? 'Unmute boss voice' : 'Mute boss voice'}
+          className={`pointer-events-auto p-2.5 rounded-xl border backdrop-blur-md transition-all shadow-lg ${
+            muted
+              ? 'bg-zinc-900/60 border-white/10 text-zinc-500 hover:text-zinc-300'
+              : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:text-orange-300'
+          }`}
+        >
+          {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+        </button>
+      )}
+
       {/* Animated Avatar Core */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="group relative pointer-events-auto"
       >
