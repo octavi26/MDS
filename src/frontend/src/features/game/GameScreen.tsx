@@ -52,7 +52,8 @@ const GameScreen: React.FC = () => {
   const [craftingError, setCraftingError] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [discoveries, setDiscoveries] = useState<DiscoveryEffect[]>([]);
-  
+  const [voiceMuted, setVoiceMuted] = useState(false);
+
   const canvasRef = React.useRef<HTMLDivElement>(null);
 
   const { data: levels, isLoading: levelsLoading } = useQuery({
@@ -94,6 +95,7 @@ const GameScreen: React.FC = () => {
     levelName: level?.name,
     goalName: level?.goalItem,
     inventory: level?.startingItems ?? [],
+    muted: voiceMuted,
   });
 
   const craftMutation = useMutation({
@@ -407,7 +409,11 @@ const GameScreen: React.FC = () => {
             )}
           </AnimatePresence>
           
-          <CompanionBubble messages={chatMessages} />
+          <CompanionBubble
+            messages={chatMessages}
+            muted={voiceMuted}
+            onToggleMute={() => setVoiceMuted((m) => !m)}
+          />
           
           {discoveries.map(discovery => (
             <SparkParticles

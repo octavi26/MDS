@@ -3,6 +3,7 @@ using CraftGame.Api.Companion;
 using CraftGame.Api.Companion.Ollama;
 using CraftGame.Api.Companion.Prompts;
 using CraftGame.Api.Companion.Sanitization;
+using CraftGame.Api.Companion.Tts;
 using CraftGame.Api.Crafting;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
@@ -46,6 +47,14 @@ builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, cl
     var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
     client.BaseAddress = new Uri(options.OllamaBaseUrl);
 });
+builder.Services.Configure<TtsClientOptions>(
+    builder.Configuration.GetSection(TtsClientOptions.SectionName));
+builder.Services.AddHttpClient<ITtsClient, HttpTtsClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<TtsClientOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.TimeoutSeconds));
+});
 builder.Services.AddSingleton<ICompanionPromptBuilder, CompanionPromptBuilder>();
 builder.Services.AddSingleton<ICompanionLineSanitizer, CompanionLineSanitizer>();
 builder.Services.AddSingleton<DeterministicCompanionAgent>();
@@ -54,12 +63,20 @@ builder.Services.AddTransient<ICompanionAgent>(serviceProvider =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
 
-    if (!options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase))
+    ICompanionAgent agent =
+        !options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase)
+            ? serviceProvider.GetRequiredService<DeterministicCompanionAgent>()
+            : serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+
+    // Attach the voice unless TTS is off or we're under test (no ai-service there).
+    var ttsOptions = serviceProvider.GetRequiredService<IOptions<TtsClientOptions>>();
+    var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
+    if (!ttsOptions.Value.Enabled || environment.IsEnvironment("Testing"))
     {
-        return serviceProvider.GetRequiredService<DeterministicCompanionAgent>();
+        return agent;
     }
 
-    return serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+    return new TtsCompanionAgent(agent, serviceProvider.GetRequiredService<ITtsClient>(), ttsOptions);
 });
 builder.Services.AddCors(options =>
 {
