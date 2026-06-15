@@ -6,4 +6,9 @@ public sealed record CompanionEventContext(
     string? LevelName,
     string? GoalName,
     IReadOnlyCollection<string> Inventory,
-    int MoveCount);
+    int MoveCount,
+    int StruggleCount = 0,
+    // A productive combination to nudge the stuck player toward. Filled in by the
+    // endpoint (from the ai-service /hint) once the player has struggled enough.
+    string? HintElementA = null,
+    string? HintElementB = null);

@@ -26,7 +26,6 @@ CONCEPT_RECIPES: dict[tuple[str, str], str] = {
     recipe_key("Fire", "Dust"): "Ash",
     recipe_key("Water", "Dust"): "Clay",
     recipe_key("Fire", "Clay"): "Brick",
-    recipe_key("Fire", "Mud"): "Brick",
     recipe_key("Water", "Mud"): "Swamp",
     recipe_key("Plant", "Mud"): "Life",
     recipe_key("Energy", "Swamp"): "Life",
@@ -42,9 +41,21 @@ CONCEPT_RECIPES: dict[tuple[str, str], str] = {
     recipe_key("Stone", "Fire"): "Metal",
     recipe_key("Metal", "Fire"): "Tool",
     recipe_key("Metal", "Human"): "Machine",
-    recipe_key("Tool", "Wood"): "House",
     recipe_key("Brick", "Tool"): "House",
     recipe_key("House", "Human"): "Village",
+    # --- Level progression recipes ---------------------------------------
+    # These MUST match what each mission's description tells the player to do
+    # (see the Level seed in CraftGameDbContext.cs). Without them, the "correct"
+    # combination falls through to the LLM and produces a wrong, hallucinated
+    # element, making the level unsolvable. Keep this block in sync with the
+    # levels.
+    recipe_key("Fire", "Mud"): "Stone",      # Solid Base: "bake a Stone"
+    recipe_key("Metal", "Wood"): "Tool",     # Tools of Trade: "Metal and Wood -> Tool"
+    recipe_key("Tool", "Wood"): "Wheel",     # The Wheel: "A Tool and Wood -> Wheel"
+    recipe_key("Steam", "Metal"): "Engine",  # The Engine: "Steam power and Metal -> Engine"
+    recipe_key("Engine", "Wheel"): "Car",    # Transportation: "Engine and Wheels -> Car"
+    recipe_key("Life", "DNA"): "Human",      # Biotechnology: "Life into DNA -> Human"
+    recipe_key("Human", "Robot"): "Cyborg",  # The Singularity: "Human and Robot -> Cyborg"
 }
 
 CATEGORY_KEYWORDS: dict[str, set[str]] = {

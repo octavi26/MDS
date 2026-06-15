@@ -18,3 +18,15 @@ class CraftResponse(BaseModel):
     deterministic: bool
     useful_steps: int | None = None
     difficulty: int | None = None
+
+
+class HintRequest(BaseModel):
+    inventory: list[str] = Field(default_factory=list)
+    goal: str | None = None
+
+
+class HintResponse(BaseModel):
+    found: bool
+    element_a: str | None = None
+    element_b: str | None = None
+    result: str | None = None

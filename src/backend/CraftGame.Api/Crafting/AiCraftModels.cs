@@ -16,3 +16,13 @@ public sealed record AiCraftResult(
     [property: JsonPropertyName("deterministic")] bool Deterministic,
     [property: JsonPropertyName("useful_steps")] int? UsefulSteps,
     [property: JsonPropertyName("difficulty")] int? Difficulty);
+
+public sealed record AiHintRequest(
+    [property: JsonPropertyName("inventory")] IReadOnlyList<string> Inventory,
+    [property: JsonPropertyName("goal")] string? Goal);
+
+public sealed record AiHintResult(
+    [property: JsonPropertyName("found")] bool Found,
+    [property: JsonPropertyName("element_a")] string? ElementA,
+    [property: JsonPropertyName("element_b")] string? ElementB,
+    [property: JsonPropertyName("result")] string? Result);

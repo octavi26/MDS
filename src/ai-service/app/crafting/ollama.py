@@ -52,24 +52,26 @@ class OllamaCombinationGenerator:
 
 
 def _build_prompt(request: CraftRequest) -> str:
+    # Note on goal-direction: we deliberately do NOT feed the level goal to the
+    # model here. The crafting model is small and fast (so the game stays snappy),
+    # and a small model just parrots the goal into every answer ("Engine of
+    # Steel", "Engine of Nature") instead of judging when it's relevant. The real
+    # path toward the goal is handled deterministically by the recipe/concept
+    # tables, and the companion actively hints the next productive step. This
+    # prompt's only job is a believable name for an off-path, creative combo.
     context = [
         "You create element names for a crafting puzzle game.",
-        "Return exactly one short result name, with no explanation.",
-        "The result must be helpful, concrete, and plausible.",
+        "Return exactly one short result name (one or two words), no explanation.",
+        "The result must be a single real, concrete thing that two people would"
+        " agree is what you get by combining the inputs.",
         "Do not return either input element unchanged.",
-        "Do not concatenate the input names.",
+        "Do not concatenate or mash together the input names.",
         "Prefer a new concept implied by the relationship between the inputs.",
         "Use title case when possible.",
         f"Combine: {request.element_a} + {request.element_b}.",
     ]
 
-    if request.level_name:
-        context.append(f"Level: {request.level_name}.")
-    if request.level_difficulty is not None:
-        context.append(f"Difficulty: {request.level_difficulty}.")
-    if request.goal_element:
-        context.append(f"Goal: {request.goal_element}.")
     if request.inventory:
-        context.append(f"Current inventory: {', '.join(request.inventory[:12])}.")
+        context.append(f"Things the player already has: {', '.join(request.inventory[:12])}.")
 
     return "\n".join(context)

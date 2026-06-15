@@ -1,0 +1,35 @@
+# macOS (Apple Silicon) override -- use the host's NATIVE Ollama (Metal GPU).
+#
+# Docker on macOS can't reach the Mac's GPU, so the in-container LLM is stuck on
+# the CPU (~25-30s per companion line). Running Ollama natively on the host uses
+# Metal and brings that down to ~1-2s. The rest of the stack still runs in Docker
+# and just talks to the host Ollama via host.docker.internal.
+#
+# One-time host setup:
+#   brew install ollama            # if not already installed
+#   brew services start ollama     # run it as a background service (Metal)
+#   ollama pull qwen2.5:3b-instruct
+#   ollama pull qwen2.5:0.5b-instruct
+#
+# Then run the stack with:
+#   docker compose -f docker-compose.yml -f docker-compose.mac.yml up -d --build
+services:
+  backend:
+    environment:
+      CompanionAgent__OllamaBaseUrl: "http://host.docker.internal:11434"
+
+  ai-service:
+    environment:
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+
+  # The bundled Ollama container is redundant on macOS (the host serves the
+  # models). Replace it with a do-nothing placeholder so it doesn't waste CPU
+  # pulling/warming a second copy, while still satisfying `depends_on`.
+  ollama:
+    entrypoint: ["/bin/sh", "-c", "sleep infinity"]
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 5s
+      timeout: 5s
+      retries: 1
+      start_period: 0s

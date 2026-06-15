@@ -18,6 +18,17 @@ public sealed class DeterministicCompanionAgent : ICompanionAgent
         CompanionEventContext context,
         CancellationToken cancellationToken = default)
     {
+        // If the player is stuck and we have a real hint, dispense it sarcastically
+        // even without the LLM, so the fallback path still steers them.
+        if (!string.IsNullOrWhiteSpace(context.HintElementA) && !string.IsNullOrWhiteSpace(context.HintElementB))
+        {
+            return Task.FromResult(new CompanionComment(
+                $"Must I do everything? Throw {context.HintElementA} at {context.HintElementB} and stop embarrassing us both.",
+                context.EventType,
+                Source,
+                VoiceLineUrl: null));
+        }
+
         var line = context.EventType switch
         {
             CompanionEventType.ImportantElementDiscovered => ImportantElementDiscovered(context),
