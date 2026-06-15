@@ -14,17 +14,14 @@ const statusClassNames: Record<StartupDebugEntry['status'], string> = {
 };
 
 export default function StartupDebugPanel() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled] = useState(() => isStartupDebugEnabled());
   const [entries, setEntries] = useState<StartupDebugEntry[]>([]);
 
   useEffect(() => {
-    const debugEnabled = isStartupDebugEnabled();
-    setEnabled(debugEnabled);
-
-    if (!debugEnabled) return;
+    if (!enabled) return;
 
     return subscribeStartupDebug(setEntries);
-  }, []);
+  }, [enabled]);
 
   if (!enabled) return null;
 

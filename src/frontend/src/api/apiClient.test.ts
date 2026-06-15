@@ -39,4 +39,23 @@ describe('apiClient', () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:5088/api/levels?userId=test-user-id');
   });
+
+  it('sends forceRestart when starting a replay session', async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      new Response(JSON.stringify({ sessionId: 'session-id' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await apiClient.startSession('user-id', 'level-id', true);
+
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      userId: 'user-id',
+      levelId: 'level-id',
+      forceRestart: true,
+    });
+  });
 });

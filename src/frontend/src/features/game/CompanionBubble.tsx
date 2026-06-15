@@ -6,7 +6,7 @@ export interface ChatMessage {
   id: string;
   text: string;
   sender: 'ai' | 'user';
-  timestamp: Date;
+  timestamp?: Date;
 }
 
 interface CompanionBubbleProps {
@@ -73,9 +73,11 @@ const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages, muted = fal
                     >
                       {msg.text}
                     </div>
-                    <span className="text-[9px] font-bold text-zinc-600 mt-2 px-1 uppercase tracking-tighter">
-                      [{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]
-                    </span>
+                    {msg.timestamp && (
+                      <span className="text-[9px] font-bold text-zinc-600 mt-2 px-1 uppercase tracking-tighter">
+                        [{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]
+                      </span>
+                    )}
                   </motion.div>
                 ))
               )}
