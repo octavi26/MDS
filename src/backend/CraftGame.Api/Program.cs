@@ -234,27 +234,35 @@ app.MapPost("/api/sessions/start", async (
         return Results.NotFound("User or level was not found.");
     }
 
-    var existingSession = await db.GameSessions
-        .Include(s => s.InventoryItems)
-        .ThenInclude(si => si.Element)
-        .Where(s => s.UserId == request.UserId && s.LevelId == request.LevelId && s.CompletedAt == null)
-        .OrderByDescending(s => s.StartTime)
-        .FirstOrDefaultAsync(cancellationToken);
-
-    if (existingSession != null)
+    if (!request.ForceRestart)
     {
-        return Results.Ok(new
+        var latestSession = await db.GameSessions
+            .Include(s => s.InventoryItems)
+            .ThenInclude(si => si.Element)
+            .Where(s => s.UserId == request.UserId && s.LevelId == request.LevelId)
+            .OrderByDescending(s => s.StartTime)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (latestSession != null)
         {
-            sessionId = existingSession.Id,
-            inventory = existingSession.InventoryItems
-                .OrderBy(si => si.Element.Name)
-                .Select(si => new
-                {
-                    name = si.Element.Name,
-                    quantity = si.Quantity
-                }),
-            isResumed = true
-        });
+            if (latestSession.CompletedAt != null)
+            {
+                return Results.Conflict(new { IsCompleted = true });
+            }
+
+            return Results.Ok(new
+            {
+                sessionId = latestSession.Id,
+                inventory = latestSession.InventoryItems
+                    .OrderBy(si => si.Element.Name)
+                    .Select(si => new
+                    {
+                        name = si.Element.Name,
+                        quantity = si.Quantity
+                    }),
+                isResumed = true
+            });
+        }
     }
 
     var session = new GameSession
@@ -401,7 +409,7 @@ app.MapHub<GameHub>("/hubs/game");
 
 app.Run();
 
-public record StartSessionRequest(Guid UserId, Guid LevelId);
+public record StartSessionRequest(Guid UserId, Guid LevelId, bool ForceRestart = false);
 public record RegisterUserRequest(string Username);
 public record CraftRequest(Guid SessionId, string ElementA, string ElementB);
 
