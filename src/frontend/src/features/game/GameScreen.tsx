@@ -74,14 +74,8 @@ const GameScreen: React.FC = () => {
   const startSessionMutation = useMutation({
     mutationFn: ({ userId, lId }: { userId: string, lId: string }) => 
       apiClient.startSession(userId, lId),
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       setSessionId(data.sessionId);
-      try {
-        const commentData = await apiClient.getCompanionComment('GameStarted', []);
-        setApiCompanionMessage(commentData.comment);
-      } catch (err) {
-        console.error("Failed to fetch companion comment", err);
-      }
     },
   });
 

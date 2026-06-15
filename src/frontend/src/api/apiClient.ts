@@ -1,4 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5088';
+const USER_ID_STORAGE_KEY = 'mock_forge_user_id';
+const USERNAME_STORAGE_KEY = 'mock_forge_username';
 
 export interface Level {
   id: string;
@@ -33,17 +35,19 @@ export interface User {
   username: string;
 }
 
+function getStoredValue(key: string): string | null {
+  const value = localStorage.getItem(key);
+  if (!value || value === 'undefined' || value === 'null') return null;
+  return value;
+}
+
 export const apiClient = {
   getUserId(): string | null {
-    const id = localStorage.getItem('mock_forge_user_id');
-    if (!id || id === 'undefined' || id === 'null') return null;
-    return id;
+    return getStoredValue(USER_ID_STORAGE_KEY);
   },
 
   getUsername(): string | null {
-    const username = localStorage.getItem('mock_forge_username');
-    if (!username || username === 'undefined' || username === 'null') return null;
-    return username;
+    return getStoredValue(USERNAME_STORAGE_KEY);
   },
 
   async registerUser(username: string): Promise<User> {
@@ -54,13 +58,13 @@ export const apiClient = {
     });
     if (!response.ok) throw new Error('Failed to register user');
     const user = await response.json();
-    localStorage.setItem('mock_forge_user_id', user.id);
-    localStorage.setItem('mock_forge_username', user.username);
+    localStorage.setItem(USER_ID_STORAGE_KEY, user.id);
+    localStorage.setItem(USERNAME_STORAGE_KEY, user.username);
     return user;
   },
 
   async getLevels(): Promise<Level[]> {
-    const userId = this.getUserId();
+    const userId = getStoredValue(USER_ID_STORAGE_KEY);
     const url = userId ? `${API_BASE_URL}/api/levels?userId=${userId}` : `${API_BASE_URL}/api/levels`;
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch levels');
@@ -91,15 +95,5 @@ export const apiClient = {
     });
     if (!response.ok) throw new Error('Failed to craft element');
     return response.json();
-  },
-
-  async getCompanionComment(eventType: string, elementNames: string[]): Promise<{ comment: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/companion/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventType, elementNames }),
-    });
-    if (!response.ok) throw new Error('Failed to fetch companion comment');
-    return response.json();
-  },
+  }
 };
