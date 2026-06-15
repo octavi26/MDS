@@ -20,6 +20,15 @@ services:
       context: ./src/ai-service
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
+      # Reuse the companion's model for inventing new crafting combinations, so
+      # the stack only has to download and keep ONE model resident in memory.
+      # The code default (qwen2.5:0.5b-instruct) was never pulled by the ollama
+      # service, so the AI crafting path 404'd and silently fell back to canned
+      # results on every novel combination.
+      OLLAMA_MODEL: qwen2.5:3b-instruct
+      # Headroom so a warm 3B generation on a slower CPU doesn't time out into
+      # the fallback (the default is only 5s).
+      CRAFT_AI_TIMEOUT_SECONDS: "20"
     ports:
       - "8001:8001"
     volumes:
