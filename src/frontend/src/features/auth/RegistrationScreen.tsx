@@ -36,25 +36,15 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegistered })
   };
 
   return (
-    <div className="min-h-screen bg-[#0c0a09] text-zinc-100 flex items-center justify-center p-6 scanline-container overflow-hidden">
+    <div className="relative min-h-screen bg-[#0c0a09] text-zinc-100 flex items-center justify-center p-6 scanline-container overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,53,15,0.15)_0%,transparent_70%)] animate-ember-pulse" />
       <div className="absolute inset-0 forgery-grid pointer-events-none opacity-20" />
       
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="max-w-md w-full relative z-10"
-      >
+      <div className="max-w-md w-full relative z-10">
         <div className="text-center mb-10">
-          <motion.div 
-            animate={{ 
-              boxShadow: ["0 0 20px rgba(234,88,12,0.2)", "0 0 40px rgba(234,88,12,0.4)", "0 0 20px rgba(234,88,12,0.2)"]
-            }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="inline-flex p-5 rounded-[2.5rem] bg-orange-500/10 border border-orange-500/20 mb-8"
-          >
+          <div className="inline-flex p-5 rounded-[2.5rem] bg-orange-500/10 border border-orange-500/20 mb-8 shadow-[0_0_24px_rgba(234,88,12,0.22)]">
             <Flame className="text-orange-500" size={40} />
-          </motion.div>
+          </div>
           <h1 className="text-5xl font-black tracking-tighter magma-text uppercase mb-3">Identity Required</h1>
           <p className="text-[10px] text-zinc-500 uppercase tracking-[0.4em] font-black">Operator Authorization Protocol</p>
         </div>
@@ -117,7 +107,7 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegistered })
         <div className="mt-12 text-center">
           <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.5em]">System Status: Ready for Synthesis</p>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

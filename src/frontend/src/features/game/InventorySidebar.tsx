@@ -11,14 +11,17 @@ interface InventorySidebarProps {
 const InventorySidebar: React.FC<InventorySidebarProps> = ({ items }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const addItem = useGameStore((state) => state.addItem);
+  const canvasItemCount = useGameStore((state) => state.canvasItems.length);
 
   const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleItemClick = (name: string) => {
-    const x = 100 + Math.random() * 300;
-    const y = 100 + Math.random() * 300;
+    const column = canvasItemCount % 4;
+    const row = Math.floor(canvasItemCount / 4) % 4;
+    const x = 96 + column * 72;
+    const y = 96 + row * 72;
     addItem(name, x, y);
   };
 

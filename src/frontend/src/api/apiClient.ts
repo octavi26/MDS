@@ -134,11 +134,11 @@ export const apiClient = {
     return fetchJson<Level[]>('load levels', url);
   },
 
-  async startSession(userId: string, levelId: string): Promise<Session> {
+  async startSession(userId: string, levelId: string, forceRestart = false): Promise<Session> {
     return fetchJson<Session>('start session', `${API_BASE_URL}/api/sessions/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, levelId }),
+      body: JSON.stringify({ userId, levelId, forceRestart }),
     });
   },
 

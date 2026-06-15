@@ -16,19 +16,16 @@
   }
   
   @keyframes ember-pulse {
-    0%, 100% { opacity: 0.2; filter: blur(40px); transform: scale(1); }
-    50% { opacity: 0.4; filter: blur(100px); transform: scale(1.2); }
+    0%, 100% { opacity: 0.18; }
+    50% { opacity: 0.22; }
   }
 
   @keyframes magma-flow {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0%, 100% { background-position: 50% 50%; }
   }
 
   @keyframes scanline {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100%); }
+    0%, 100% { opacity: 0.35; }
   }
 
   @keyframes heavy-glow {
@@ -74,14 +71,14 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: magma-flow 4s linear infinite;
+  animation: none;
   font-weight: 900;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
 }
 
 .glass-panel {
   background: rgba(12, 10, 9, 0.6);
-  backdrop-blur: 24px;
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
 }
@@ -99,11 +96,25 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, transparent, rgba(234, 88, 12, 0.2), transparent);
-  animation: scanline 4s linear infinite;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(234, 88, 12, 0.16), transparent);
   pointer-events: none;
   z-index: 50;
+}
+
+.animate-ember-pulse {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Custom Scrollbar */

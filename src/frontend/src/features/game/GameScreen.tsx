@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   DndContext,
@@ -39,6 +39,16 @@ interface DiscoveryEffect {
   y: number;
 }
 
+interface ActiveSession {
+  levelId: string;
+  sessionId: string;
+}
+
+const deterministicUnit = (seed: number) => {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+};
+
 const GameScreen: React.FC = () => {
   const userId = apiClient.getUserId() || '';
   const username = apiClient.getUsername() || 'OPERATOR';
@@ -48,22 +58,24 @@ const GameScreen: React.FC = () => {
   const { addItem, updateItemPosition, combineItems, canvasItems, clearCanvas } = useGameStore();
   const [activeItem, setActiveItem] = useState<{ id: string, name: string, type: string } | null>(null);
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [apiCompanionMessage, setApiCompanionMessage] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [craftingError, setCraftingError] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [discoveries, setDiscoveries] = useState<DiscoveryEffect[]>([]);
-  const [isLevelComplete, setIsLevelComplete] = useState(false);
+  const [completedLevelId, setCompletedLevelId] = useState<string | null>(null);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const showStartupDebug = isStartupDebugEnabled();
+  const sessionId = activeSession && activeSession.levelId === levelId
+    ? activeSession.sessionId
+    : null;
+  const isLevelComplete = completedLevelId === levelId;
 
   const canvasRef = React.useRef<HTMLDivElement>(null);
+  const startedSessionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Clear canvas and reset completion when entering a new level
     clearCanvas();
-    setIsLevelComplete(false);
-    setSessionId(null); // Reset session to force new one for new level
+    startedSessionKeyRef.current = null;
   }, [levelId, clearCanvas]);
 
   const { data: levels, isLoading: levelsLoading, error: levelsError } = useQuery({
@@ -74,23 +86,51 @@ const GameScreen: React.FC = () => {
   const level = levels?.find((l) => l.id === levelId);
 
   const startSessionMutation = useMutation({
-    mutationFn: ({ userId, lId }: { userId: string, lId: string }) => 
-      apiClient.startSession(userId, lId),
-    onSuccess: (data) => {
+    mutationFn: ({
+      userId,
+      lId,
+      forceRestart,
+    }: {
+      userId: string,
+      lId: string,
+      forceRestart: boolean,
+    }) => apiClient.startSession(userId, lId, forceRestart),
+    onSuccess: (data, variables) => {
       emitStartupDebug('start session', 'success', `Started session ${data.sessionId}`);
-      setSessionId(data.sessionId);
+      setActiveSession({ levelId: variables.lId, sessionId: data.sessionId });
     },
     onError: (error) => {
+      startedSessionKeyRef.current = null;
       emitStartupDebug('start session', 'error', describeError(error));
     },
   });
 
   useEffect(() => {
-    if (levelId && !sessionId && !startSessionMutation.isPending) {
-      emitStartupDebug('start session', 'pending', `Starting level ${levelId}`, `userId: ${userId || '(empty)'}`);
-      startSessionMutation.mutate({ userId, lId: levelId });
+    if (!levelId || !userId || !level || sessionId || startSessionMutation.isPending) {
+      return;
     }
-  }, [levelId, sessionId, startSessionMutation, userId]);
+
+    const forceRestart = level.isCompleted;
+    const sessionKey = `${userId}:${levelId}:${forceRestart}`;
+    if (startedSessionKeyRef.current === sessionKey) {
+      return;
+    }
+
+    startedSessionKeyRef.current = sessionKey;
+    emitStartupDebug(
+      'start session',
+      'pending',
+      forceRestart ? `Restarting completed level ${levelId}` : `Starting level ${levelId}`,
+      `userId: ${userId || '(empty)'}`,
+    );
+    startSessionMutation.mutate({ userId, lId: levelId, forceRestart });
+  }, [level, levelId, sessionId, startSessionMutation, userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      emitStartupDebug('start session', 'error', 'Cannot start a level without a registered user');
+    }
+  }, [userId]);
 
   const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', sessionId],
@@ -132,12 +172,15 @@ const GameScreen: React.FC = () => {
     }
   }, [sessionData, sessionError, sessionId, sessionLoading]);
 
-  const inventoryItems = sessionData?.inventory.map(i => i.name) || level?.startingItems || [];
+  const inventoryItems = useMemo(
+    () => sessionData?.inventory.map((i) => i.name) || level?.startingItems || [],
+    [level?.startingItems, sessionData?.inventory],
+  );
 
   const localCompanion = useCompanion({
     levelName: level?.name,
     goalName: level?.goalItem,
-    inventory: level?.startingItems ?? [],
+    inventory: inventoryItems,
     muted: voiceMuted,
   });
 
@@ -188,7 +231,7 @@ const GameScreen: React.FC = () => {
       }
 
       if (result.isGoalReached) {
-        setIsLevelComplete(true);
+        setCompletedLevelId(levelId ?? null);
         if (canvasRef.current) {
           const rect = canvasRef.current.getBoundingClientRect();
           const goalDiscoveryX = x + rect.left + CANVAS_ITEM_WIDTH / 2;
@@ -197,8 +240,8 @@ const GameScreen: React.FC = () => {
           // Large celebration burst
           const bursts = Array.from({ length: 8 }).map((_, i) => ({
             id: `goal-${Date.now()}-${i}`,
-            x: goalDiscoveryX + (Math.random() - 0.5) * 200,
-            y: goalDiscoveryY + (Math.random() - 0.5) * 200
+            x: goalDiscoveryX + (deterministicUnit(i + 1) - 0.5) * 200,
+            y: goalDiscoveryY + (deterministicUnit(i + 11) - 0.5) * 200
           }));
           setDiscoveries(prev => [...prev, ...bursts]);
         }
@@ -212,7 +255,6 @@ const GameScreen: React.FC = () => {
       } else {
         localCompanion.notifyUnproductiveMove();
       }
-      setApiCompanionMessage(null);
       setCraftingError(null);
       void queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
       void queryClient.invalidateQueries({ queryKey: ['levels'] });
@@ -221,7 +263,6 @@ const GameScreen: React.FC = () => {
       const message = describeError(error);
       setCraftingError(`Combination failed: ${message}`);
       emitStartupDebug('craft element', 'error', message);
-      setApiCompanionMessage(null);
     },
   });
 
@@ -236,26 +277,12 @@ const GameScreen: React.FC = () => {
     }
   };
 
-  const currentCompanionMessage = apiCompanionMessage || localCompanion.message;
-
-  useEffect(() => {
-    if (currentCompanionMessage) {
-      setChatMessages(prev => {
-        if (prev.length > 0 && prev[prev.length - 1].text === currentCompanionMessage) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            text: currentCompanionMessage,
-            sender: 'ai',
-            timestamp: new Date()
-          }
-        ];
-      });
-    }
-  }, [currentCompanionMessage]);
+  const currentCompanionMessage = localCompanion.message;
+  const chatMessages = useMemo<ChatMessage[]>(() => (
+    currentCompanionMessage
+      ? [{ id: currentCompanionMessage, text: currentCompanionMessage, sender: 'ai' }]
+      : []
+  ), [currentCompanionMessage]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -295,16 +322,15 @@ const GameScreen: React.FC = () => {
     const pointerX = activator.clientX + delta.x;
     const pointerY = activator.clientY + delta.y;
 
-    let currentX = 0;
-    let currentY = 0;
-
-    if (data.type === 'inventory') {
-      currentX = pointerX - rect.left - CANVAS_ITEM_WIDTH / 2;
-      currentY = pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2;
-    } else {
-      currentX = pointerX - rect.left - dragOffset.x;
-      currentY = pointerY - rect.top - dragOffset.y;
-    }
+    const { currentX, currentY } = data.type === 'inventory'
+      ? {
+          currentX: pointerX - rect.left - CANVAS_ITEM_WIDTH / 2,
+          currentY: pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2,
+        }
+      : {
+          currentX: pointerX - rect.left - dragOffset.x,
+          currentY: pointerY - rect.top - dragOffset.y,
+        };
 
     const targetItem = findOverlappingCanvasItem(
       { id: active.id as string, x: currentX, y: currentY, name: data.name },
@@ -331,16 +357,15 @@ const GameScreen: React.FC = () => {
     const pointerX = activator.clientX + delta.x;
     const pointerY = activator.clientY + delta.y;
 
-    let x = 0;
-    let y = 0;
-
-    if (data.type === 'inventory') {
-      x = pointerX - rect.left - CANVAS_ITEM_WIDTH / 2;
-      y = pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2;
-    } else {
-      x = pointerX - rect.left - dragOffset.x;
-      y = pointerY - rect.top - dragOffset.y;
-    }
+    const { x, y } = data.type === 'inventory'
+      ? {
+          x: pointerX - rect.left - CANVAS_ITEM_WIDTH / 2,
+          y: pointerY - rect.top - CANVAS_ITEM_HEIGHT / 2,
+        }
+      : {
+          x: pointerX - rect.left - dragOffset.x,
+          y: pointerY - rect.top - dragOffset.y,
+        };
 
 
     if (data.type === 'inventory') {
@@ -362,8 +387,6 @@ const GameScreen: React.FC = () => {
         });
       } else {
         addItem(data.name, x, y);
-        localCompanion.notifyElementAdded(data.name);
-        setApiCompanionMessage(null);
       }
     } else if (data.type === 'canvas') {
       const item = canvasItems.find((i) => i.id === data.originId);
@@ -572,7 +595,7 @@ const GameScreen: React.FC = () => {
                       Advance to Next Sector
                     </button>
                     <button
-                      onClick={() => setIsLevelComplete(false)}
+                      onClick={() => setCompletedLevelId(null)}
                       className="w-full py-4 bg-white/5 border border-white/10 text-zinc-400 font-black uppercase tracking-widest rounded-2xl hover:bg-white/10 transition-all active:scale-95"
                     >
                       Continue Forgery
