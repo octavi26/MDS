@@ -160,31 +160,36 @@ public sealed class CraftEndpointTests
             Username = "TestPlayer",
             Email = "test@example.com"
         });
-        db.Levels.Add(new Level
+
+        var fire = new Element
+        {
+            Id = TestIds.FireId,
+            Name = "Fire",
+            Description = "A basic fire element",
+            Icon = "fire",
+            IsStartingElement = true
+        };
+        var dust = new Element
+        {
+            Id = TestIds.DustId,
+            Name = "Dust",
+            Description = "A dusty element",
+            Icon = "dust",
+            IsStartingElement = true
+        };
+
+        var level = new Level
         {
             Id = TestIds.LevelId,
             Name = "Life's Mystery",
             Description = "Find Life.",
             Difficulty = 3,
-            GoalElementName = "Life"
-        });
-        db.Elements.AddRange(
-            new Element
-            {
-                Id = TestIds.FireId,
-                Name = "Fire",
-                Description = "A basic fire element",
-                Icon = "fire",
-                IsStartingElement = true
-            },
-            new Element
-            {
-                Id = TestIds.DustId,
-                Name = "Dust",
-                Description = "A dusty element",
-                Icon = "dust",
-                IsStartingElement = true
-            });
+            GoalElementName = "Life",
+            StartingElements = [fire, dust]
+        };
+
+        db.Elements.AddRange(fire, dust);
+        db.Levels.Add(level);
 
         await db.SaveChangesAsync();
     }

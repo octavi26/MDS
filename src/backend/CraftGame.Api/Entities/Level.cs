@@ -9,9 +9,11 @@ public class Level
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public int Difficulty { get; set; }
+    public int Order { get; set; }
     
     [Required]
     public string GoalElementName { get; set; } = string.Empty;
     
+    public ICollection<Element> StartingElements { get; set; } = new List<Element>();
     public ICollection<GameSession> GameSessions { get; set; } = new List<GameSession>();
 }

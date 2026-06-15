@@ -1,52 +1,47 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
-import CompanionBubble from './CompanionBubble';
+import { describe, expect, it } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import CompanionBubble, { type ChatMessage } from './CompanionBubble';
+
+const mockMessages: ChatMessage[] = [
+  { id: '1', text: 'First message', sender: 'ai', timestamp: new Date() },
+  { id: '2', text: 'Second message', sender: 'ai', timestamp: new Date() },
+];
 
 describe('CompanionBubble', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+  it('renders only the last message as a preview when closed', () => {
+    render(<CompanionBubble messages={mockMessages} />);
+    expect(screen.getByText('Second message')).toBeInTheDocument();
+    expect(screen.queryByText('First message')).not.toBeInTheDocument();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
+  it('renders nothing if messages array is empty', () => {
+    render(<CompanionBubble messages={[]} />);
+    // Should still render the avatar button
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    // But no bubble preview (the preview div has bg-zinc-100)
+    const preview = screen.queryByText(/message/i);
+    expect(preview).not.toBeInTheDocument();
   });
 
-  it('renders nothing when there is no message', () => {
-    render(<CompanionBubble message={null} />);
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  });
+  it('toggles the chat history panel when avatar is clicked', async () => {
+    render(<CompanionBubble messages={mockMessages} />);
+    const button = screen.getByRole('button');
+    
+    // Open
+    fireEvent.click(button);
+    expect(await screen.findByText('Forge Intelligence')).toBeInTheDocument();
+    expect(screen.getByText('First message')).toBeInTheDocument();
+    expect(screen.getAllByText('Second message').length).toBeGreaterThan(0);
 
-  it('shows a message when one is provided', () => {
-    render(<CompanionBubble message="Bold move." />);
-    expect(screen.getByRole('status')).toHaveTextContent('Bold move.');
-  });
-
-  it('hides the bubble after visibleForMs elapses', () => {
-    render(<CompanionBubble message="Bold move." visibleForMs={1000} />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1000);
+    // Close
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.queryByText('Forge Intelligence')).not.toBeInTheDocument();
     });
-
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
-  it('keeps the bubble visible when visibleForMs is zero', () => {
-    render(<CompanionBubble message="Forever." visibleForMs={0} />);
-
-    act(() => {
-      vi.advanceTimersByTime(60_000);
-    });
-
-    expect(screen.getByRole('status')).toHaveTextContent('Forever.');
-  });
-
-  it('replaces the displayed message when a new one arrives', () => {
-    const { rerender } = render(<CompanionBubble message="First." visibleForMs={10_000} />);
-    expect(screen.getByRole('status')).toHaveTextContent('First.');
-
-    rerender(<CompanionBubble message="Second." visibleForMs={10_000} />);
-    expect(screen.getByRole('status')).toHaveTextContent('Second.');
+  it('shows the message count badge when closed', () => {
+    render(<CompanionBubble messages={mockMessages} />);
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 });

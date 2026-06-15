@@ -3,6 +3,7 @@ using CraftGame.Api.Companion;
 using CraftGame.Api.Companion.Ollama;
 using CraftGame.Api.Companion.Prompts;
 using CraftGame.Api.Companion.Sanitization;
+using CraftGame.Api.Companion.Tts;
 using CraftGame.Api.Crafting;
 using CraftGame.Api.Data;
 using CraftGame.Api.Entities;
@@ -46,6 +47,14 @@ builder.Services.AddHttpClient<IOllamaClient, OllamaClient>((serviceProvider, cl
     var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
     client.BaseAddress = new Uri(options.OllamaBaseUrl);
 });
+builder.Services.Configure<TtsClientOptions>(
+    builder.Configuration.GetSection(TtsClientOptions.SectionName));
+builder.Services.AddHttpClient<ITtsClient, HttpTtsClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<TtsClientOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.TimeoutSeconds));
+});
 builder.Services.AddSingleton<ICompanionPromptBuilder, CompanionPromptBuilder>();
 builder.Services.AddSingleton<ICompanionLineSanitizer, CompanionLineSanitizer>();
 builder.Services.AddSingleton<DeterministicCompanionAgent>();
@@ -54,12 +63,19 @@ builder.Services.AddTransient<ICompanionAgent>(serviceProvider =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<CompanionAgentOptions>>().Value;
 
-    if (!options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase))
+    ICompanionAgent agent =
+        !options.Enabled || !string.Equals(options.Provider, CompanionAgentProviders.Ollama, StringComparison.OrdinalIgnoreCase)
+            ? serviceProvider.GetRequiredService<DeterministicCompanionAgent>()
+            : serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+
+    var ttsOptions = serviceProvider.GetRequiredService<IOptions<TtsClientOptions>>();
+    var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
+    if (!ttsOptions.Value.Enabled || environment.IsEnvironment("Testing"))
     {
-        return serviceProvider.GetRequiredService<DeterministicCompanionAgent>();
+        return agent;
     }
 
-    return serviceProvider.GetRequiredService<OllamaCompanionAgent>();
+    return new TtsCompanionAgent(agent, serviceProvider.GetRequiredService<ITtsClient>(), ttsOptions);
 });
 builder.Services.AddCors(options =>
 {
@@ -141,21 +157,46 @@ app.MapPost("/api/users/register", async (RegisterUserRequest request, CraftGame
 
 app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 {
-    var startingElements = await db.Elements
-        .Where(e => e.IsStartingElement)
-        .Select(e => e.Name)
+    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
+
+    var levels = await db.Levels
+        .Include(l => l.StartingElements)
+        .OrderBy(l => l.Order)
         .ToListAsync();
 
-    return await db.Levels
-        .Select(l => new {
-            l.Id,
-            l.Name,
-            l.Description,
-            l.Difficulty,
-            GoalItem = l.GoalElementName,
-            StartingItems = startingElements
-        })
+    var completedLevelIds = await db.GameSessions
+        .Where(s => s.UserId == userId && s.IsCompleted)
+        .Select(s => s.LevelId)
+        .Distinct()
         .ToListAsync();
+
+    var result = new List<object>();
+    var maxCompletedOrder = levels
+        .Where(l => completedLevelIds.Contains(l.Id))
+        .Select(l => l.Order)
+        .DefaultIfEmpty(0)
+        .Max();
+
+    foreach (var level in levels)
+    {
+        var isCompleted = completedLevelIds.Contains(level.Id);
+        var isLocked = level.Order > 1 && level.Order > maxCompletedOrder + 1;
+
+        result.Add(new
+        {
+            level.Id,
+            level.Name,
+            level.Description,
+            level.Difficulty,
+            level.Order,
+            GoalItem = level.GoalElementName,
+            StartingItems = level.StartingElements.Select(e => e.Name).ToList(),
+            IsCompleted = isCompleted,
+            IsLocked = isLocked
+        });
+    }
+
+    return Results.Ok(result);
 })
 .WithTags("Game");
 
@@ -165,9 +206,11 @@ app.MapPost("/api/sessions/start", async (
     CancellationToken cancellationToken) =>
 {
     var userExists = await db.Users.AnyAsync(u => u.Id == request.UserId, cancellationToken);
-    var levelExists = await db.Levels.AnyAsync(l => l.Id == request.LevelId, cancellationToken);
+    var level = await db.Levels
+        .Include(l => l.StartingElements)
+        .FirstOrDefaultAsync(l => l.Id == request.LevelId, cancellationToken);
 
-    if (!userExists || !levelExists)
+    if (!userExists || level == null)
     {
         return Results.NotFound("User or level was not found.");
     }
@@ -195,11 +238,6 @@ app.MapPost("/api/sessions/start", async (
         });
     }
 
-    var startingElements = await db.Elements
-        .Where(e => e.IsStartingElement)
-        .OrderBy(e => e.Name)
-        .ToListAsync(cancellationToken);
-
     var session = new GameSession
     {
         Id = Guid.NewGuid(),
@@ -209,7 +247,7 @@ app.MapPost("/api/sessions/start", async (
     };
 
     db.GameSessions.Add(session);
-    db.SessionInventories.AddRange(startingElements.Select(element => new SessionInventory
+    db.SessionInventories.AddRange(level.StartingElements.Select(element => new SessionInventory
     {
         Id = Guid.NewGuid(),
         GameSessionId = session.Id,
@@ -222,7 +260,7 @@ app.MapPost("/api/sessions/start", async (
     return Results.Ok(new 
     { 
         sessionId = session.Id,
-        inventory = startingElements.Select(e => new { name = e.Name, quantity = 1 }),
+        inventory = level.StartingElements.Select(e => new { name = e.Name, quantity = 1 }),
         isResumed = false 
     });
 })
@@ -320,13 +358,22 @@ app.MapPost("/api/craft", async (
             ElementId = element.Id,
             Quantity = 1
         });
+        
+        if (element.Name.Equals(session.Level.GoalElementName, StringComparison.OrdinalIgnoreCase))
+        {
+            session.IsCompleted = true;
+            session.CompletedAt = DateTime.UtcNow;
+            session.EndTime = DateTime.UtcNow;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
     return Results.Ok(new { 
         name = element.Name, 
         description = element.Description,
-        icon = element.Icon
+        icon = element.Icon,
+        isGoalReached = session.IsCompleted
     });
 })
 .WithTags("Game");

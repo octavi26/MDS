@@ -6,29 +6,35 @@ interface DraggableItemProps {
   id: string;
   name: string;
   type: 'inventory' | 'canvas';
+  isMerging?: boolean;
   onClick?: () => void;
   onDoubleClick?: () => void;
   style?: React.CSSProperties;
+  className?: string;
+  variant?: 'inventory' | 'canvas';
 }
 
 const DraggableItem: React.FC<DraggableItemProps> = ({ 
   id, 
   name, 
   type, 
+  isMerging,
   onClick, 
   onDoubleClick,
-  style 
+  style,
+  className,
+  variant
 }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: id,
     data: { name, type, originId: id }
   });
 
-  // Hide the original item while dragging to avoid "ghost" elements 
-  // and make the DragOverlay experience seamless.
   const itemStyle: React.CSSProperties = {
     ...style,
-    visibility: isDragging ? 'hidden' : undefined,
+    visibility: isDragging ? 'hidden' : 'visible',
+    opacity: isDragging ? 0 : 1,
+    pointerEvents: isDragging ? 'none' : undefined,
   };
 
   return (
@@ -38,11 +44,14 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
       {...listeners}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={type === 'canvas' ? 'absolute min-w-[100px]' : ''}
+      className={`${type === 'canvas' ? 'absolute' : ''} ${className || ''}`}
       style={itemStyle}
     >
       <ItemCard 
         name={name} 
+        isMerging={isMerging}
+        isDragging={isDragging}
+        variant={variant || type}
         className={type === 'inventory' ? 'bg-zinc-800/40' : ''} 
       />
     </div>
