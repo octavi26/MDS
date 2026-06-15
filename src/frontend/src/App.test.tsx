@@ -30,8 +30,7 @@ vi.mock('./api/apiClient', () => ({
       id: 'test-session-id',
       levelId: '1',
       inventory: [{ name: 'Water', quantity: 1 }, { name: 'Fire', quantity: 1 }]
-    }),
-    getCompanionComment: vi.fn().mockResolvedValue({ comment: 'Hello tester!' })
+    })
   }
 }))
 
