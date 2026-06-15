@@ -12,5 +12,6 @@ public class GameSession
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public bool IsCompleted { get; set; }
+    public DateTime? CompletedAt { get; set; }
     public ICollection<SessionInventory> InventoryItems { get; set; } = new List<SessionInventory>();
 }

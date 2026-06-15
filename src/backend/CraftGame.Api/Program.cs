@@ -68,7 +68,6 @@ builder.Services.AddTransient<ICompanionAgent>(serviceProvider =>
             ? serviceProvider.GetRequiredService<DeterministicCompanionAgent>()
             : serviceProvider.GetRequiredService<OllamaCompanionAgent>();
 
-    // Attach the voice unless TTS is off or we're under test (no ai-service there).
     var ttsOptions = serviceProvider.GetRequiredService<IOptions<TtsClientOptions>>();
     var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
     if (!ttsOptions.Value.Enabled || environment.IsEnvironment("Testing"))
@@ -140,9 +139,25 @@ app.MapPost("/api/companion/comments", async (
 })
 .WithTags("Companion");
 
+app.MapPost("/api/users/register", async (RegisterUserRequest request, CraftGameDbContext db, CancellationToken cancellationToken) =>
+{
+    var user = new User
+    {
+        Id = Guid.NewGuid(),
+        Username = request.Username,
+        Email = $"{request.Username.ToLower()}@example.com"
+    };
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync(cancellationToken);
+
+    return Results.Ok(new { id = user.Id, username = user.Username });
+})
+.WithTags("Users");
+
 app.MapGet("/api/levels", async (CraftGameDbContext db) =>
 {
-    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"); // In a real app, this would come from Auth
+    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
 
     var levels = await db.Levels
         .Include(l => l.StartingElements)
@@ -200,6 +215,29 @@ app.MapPost("/api/sessions/start", async (
         return Results.NotFound("User or level was not found.");
     }
 
+    var existingSession = await db.GameSessions
+        .Include(s => s.InventoryItems)
+        .ThenInclude(si => si.Element)
+        .Where(s => s.UserId == request.UserId && s.LevelId == request.LevelId && s.CompletedAt == null)
+        .OrderByDescending(s => s.StartTime)
+        .FirstOrDefaultAsync(cancellationToken);
+
+    if (existingSession != null)
+    {
+        return Results.Ok(new
+        {
+            sessionId = existingSession.Id,
+            inventory = existingSession.InventoryItems
+                .OrderBy(si => si.Element.Name)
+                .Select(si => new
+                {
+                    name = si.Element.Name,
+                    quantity = si.Quantity
+                }),
+            isResumed = true
+        });
+    }
+
     var session = new GameSession
     {
         Id = Guid.NewGuid(),
@@ -219,7 +257,12 @@ app.MapPost("/api/sessions/start", async (
 
     await db.SaveChangesAsync(cancellationToken);
 
-    return Results.Ok(new { sessionId = session.Id });
+    return Results.Ok(new 
+    { 
+        sessionId = session.Id,
+        inventory = level.StartingElements.Select(e => new { name = e.Name, quantity = 1 }),
+        isResumed = false 
+    });
 })
 .WithTags("Game");
 
@@ -259,7 +302,6 @@ app.MapPost("/api/craft", async (
     IAiCraftClient aiCraftClient,
     CancellationToken cancellationToken) =>
 {
-    // 1. Sort element names to ensure deterministic combination lookup
     var elements = new[] { request.ElementA, request.ElementB }.OrderBy(e => e).ToList();
 
     var session = await db.GameSessions
@@ -273,7 +315,6 @@ app.MapPost("/api/craft", async (
         return Results.NotFound("Game session was not found.");
     }
 
-    // 2. Call AI Service to get the result of the combination
     var result = await aiCraftClient.CraftAsync(new AiCraftRequest(
         ElementA: elements[0],
         ElementB: elements[1],
@@ -290,7 +331,6 @@ app.MapPost("/api/craft", async (
         return Results.Problem("AI Service failed to craft.");
     }
 
-    // 3. Ensure the result element exists in the DB
     var element = await db.Elements.FirstOrDefaultAsync(e => e.Name == result.Result, cancellationToken);
     if (element == null)
     {
@@ -299,14 +339,13 @@ app.MapPost("/api/craft", async (
             Id = Guid.NewGuid(),
             Name = result.Result,
             Description = $"Discovered by combining {elements[0]} and {elements[1]}",
-            Icon = "✨", // Default icon for discovered elements
+            Icon = "✨",
             IsStartingElement = false
         };
         db.Elements.Add(element);
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    // 4. Add to session inventory if not already there
     var inventoryItem = await db.SessionInventories
         .FirstOrDefaultAsync(si => si.GameSessionId == request.SessionId && si.ElementId == element.Id, cancellationToken);
 
@@ -320,10 +359,10 @@ app.MapPost("/api/craft", async (
             Quantity = 1
         });
         
-        // Check if level goal reached
         if (element.Name.Equals(session.Level.GoalElementName, StringComparison.OrdinalIgnoreCase))
         {
             session.IsCompleted = true;
+            session.CompletedAt = DateTime.UtcNow;
             session.EndTime = DateTime.UtcNow;
         }
 
@@ -344,6 +383,7 @@ app.MapHub<GameHub>("/hubs/game");
 app.Run();
 
 public record StartSessionRequest(Guid UserId, Guid LevelId);
+public record RegisterUserRequest(string Username);
 public record CraftRequest(Guid SessionId, string ElementA, string ElementB);
 
 public partial class Program;
