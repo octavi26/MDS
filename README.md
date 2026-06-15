@@ -1,8 +1,7 @@
-# MDS Project Scaffold
+# MDS
 
-This repository is a clean runnable scaffold for the MDS project. It intentionally does **not** contain game logic, recipe logic, level logic, AI agent behavior, or a real interface yet.
-
-It only prepares the stack so the team can start building the actual game from a working baseline.
+This repository contains the full local craft game stack: React frontend,
+ASP.NET Core backend, FastAPI AI/TTS service, PostgreSQL, and Ollama.
 
 ## Start Everything
 
@@ -11,10 +10,22 @@ Requirements:
 - Docker Desktop
 - Git
 
-From the repo root:
+From the repo root, start the whole project with one command:
 
 ```sh
 docker compose up --build
+```
+
+Windows users can also run:
+
+```bat
+dev.cmd
+```
+
+macOS/Linux users can also run:
+
+```sh
+./scripts/dev.sh
 ```
 
 This works everywhere, but the companion's language model runs on the **CPU**,
@@ -78,26 +89,15 @@ above to use an NVIDIA or Apple-Silicon GPU for ~1-2s lines instead of ~25-30s.
 
 ## What Is Prepared
 
-- `src/frontend`: React + Vite + TypeScript + Tailwind project
-- `src/backend/CraftGame.Api`: ASP.NET Core Web API project
-- `src/ai-service`: FastAPI project
+- `src/frontend`: React + Vite + TypeScript + Tailwind game frontend
+- `src/backend/CraftGame.Api`: ASP.NET Core Web API with PostgreSQL persistence
+- `src/ai-service`: FastAPI crafting, hint, and TTS service
 - `db`: PostgreSQL service in Docker Compose
-- `SignalR`: backend hub placeholder
+- `ollama`: local LLM service for crafting and companion lines
+- `SignalR`: backend game hub
 - `Swagger`: backend API docs
 - `GitHub Actions`: CI for backend, frontend, and AI service
 - Cross-platform helper scripts in `scripts/`
-
-## What Is Not Built Yet
-
-- No game screen
-- No level system
-- No element inventory
-- No combination logic
-- No AI agent prompts
-- No TTS pipeline
-- No persisted gameplay schema
-
-Those parts are intentionally left for the team to design and implement.
 
 ## Test Commands
 
