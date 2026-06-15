@@ -174,20 +174,20 @@ app.MapPost("/api/users/register", async (RegisterUserRequest request, CraftGame
 })
 .WithTags("Users");
 
-app.MapGet("/api/levels", async (CraftGameDbContext db) =>
+app.MapGet("/api/levels", async (Guid? userId, CraftGameDbContext db) =>
 {
-    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
-
     var levels = await db.Levels
         .Include(l => l.StartingElements)
         .OrderBy(l => l.Order)
         .ToListAsync();
 
-    var completedLevelIds = await db.GameSessions
-        .Where(s => s.UserId == userId && s.IsCompleted)
-        .Select(s => s.LevelId)
-        .Distinct()
-        .ToListAsync();
+    var completedLevelIds = userId.HasValue 
+        ? await db.GameSessions
+            .Where(s => s.UserId == userId.Value && s.IsCompleted)
+            .Select(s => s.LevelId)
+            .Distinct()
+            .ToListAsync()
+        : new List<Guid>();
 
     var result = new List<object>();
     var maxCompletedOrder = levels

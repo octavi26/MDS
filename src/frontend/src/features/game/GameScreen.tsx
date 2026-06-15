@@ -22,8 +22,6 @@ import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
 import { findOverlappingCanvasItem, CANVAS_ITEM_WIDTH, CANVAS_ITEM_HEIGHT } from './craftingCollision';
 
-const USER_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
-
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
@@ -41,6 +39,8 @@ interface DiscoveryEffect {
 }
 
 const GameScreen: React.FC = () => {
+  const userId = apiClient.getUserId() || '';
+  const username = apiClient.getUsername() || 'OPERATOR';
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -87,9 +87,9 @@ const GameScreen: React.FC = () => {
 
   useEffect(() => {
     if (levelId && !sessionId && !startSessionMutation.isPending) {
-      startSessionMutation.mutate({ userId: USER_ID, lId: levelId });
+      startSessionMutation.mutate({ userId, lId: levelId });
     }
-  }, [levelId, sessionId, startSessionMutation]);
+  }, [levelId, sessionId, startSessionMutation, userId]);
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
     queryKey: ['session', sessionId],
