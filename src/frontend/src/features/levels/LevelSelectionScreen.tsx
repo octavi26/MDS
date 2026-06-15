@@ -1,17 +1,35 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Flame, Target, Box, Zap, ChevronRight } from 'lucide-react';
 import { apiClient } from '../../api/apiClient';
 import type { Level } from '../../api/apiClient';
+import { describeError, emitStartupDebug, isStartupDebugEnabled } from '../../debug/startupDebug';
 
 const LevelSelectionScreen: React.FC = () => {
   const navigate = useNavigate();
+  const showStartupDebug = isStartupDebugEnabled();
   const { data: levels, isLoading, error } = useQuery({
     queryKey: ['levels'],
     queryFn: apiClient.getLevels,
   });
+
+  useEffect(() => {
+    if (isLoading) {
+      emitStartupDebug('levels screen', 'pending', 'Waiting for level list');
+      return;
+    }
+
+    if (error) {
+      emitStartupDebug('levels screen', 'error', describeError(error));
+      return;
+    }
+
+    if (levels) {
+      emitStartupDebug('levels screen', 'success', `Loaded ${levels.length} levels`);
+    }
+  }, [error, isLoading, levels]);
 
   if (isLoading) {
     return (
@@ -42,6 +60,11 @@ const LevelSelectionScreen: React.FC = () => {
           <p className="text-zinc-500 font-medium leading-relaxed">
             The forgery network is unreachable. Please ensure the backend matrix is active and try again.
           </p>
+          {showStartupDebug && (
+            <p className="break-words rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-left font-mono text-xs text-red-200">
+              {describeError(error)}
+            </p>
+          )}
           <button 
             onClick={() => window.location.reload()}
             className="px-8 py-3 bg-red-500/10 border border-red-500/20 text-red-500 font-black uppercase tracking-widest rounded-2xl hover:bg-red-500/20 transition-all"

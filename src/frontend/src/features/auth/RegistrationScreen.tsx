@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, Zap, User, ArrowRight, Loader2 } from 'lucide-react';
 import { apiClient } from '../../api/apiClient';
+import { describeError, emitStartupDebug } from '../../debug/startupDebug';
 
 interface RegistrationScreenProps {
   onRegistered: () => void;
@@ -18,12 +19,16 @@ const RegistrationScreen: React.FC<RegistrationScreenProps> = ({ onRegistered })
 
     setIsPending(true);
     setError(null);
+    emitStartupDebug('registration', 'pending', `Registering operator "${username.trim()}"`);
 
     try {
       await apiClient.registerUser(username.trim());
+      emitStartupDebug('registration', 'success', 'Operator registration completed');
       onRegistered();
     } catch (err) {
-      setError('Neural link failed. Forge is rejecting this identity.');
+      const message = describeError(err);
+      setError(`Neural link failed: ${message}`);
+      emitStartupDebug('registration', 'error', message);
       console.error(err);
     } finally {
       setIsPending(false);

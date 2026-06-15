@@ -22,6 +22,18 @@ Windows users can also run:
 dev.cmd
 ```
 
+For startup debugging on Windows, run:
+
+```bat
+dev.cmd debug
+```
+
+That starts the Docker stack in the background, opens
+`http://localhost:5173/?debug=1`, and follows Docker logs in the terminal. The
+debug overlay on the page shows frontend startup steps, API URLs, HTTP statuses,
+and request failures. Use `http://localhost:5173/?debug=0` to turn the overlay
+off in that browser.
+
 macOS/Linux users can also run:
 
 ```sh

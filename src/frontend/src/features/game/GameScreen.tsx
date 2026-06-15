@@ -21,6 +21,7 @@ import CompanionBubble, { type ChatMessage } from './CompanionBubble';
 import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
 import { findOverlappingCanvasItem, CANVAS_ITEM_WIDTH, CANVAS_ITEM_HEIGHT } from './craftingCollision';
+import { describeError, emitStartupDebug, isStartupDebugEnabled } from '../../debug/startupDebug';
 
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
@@ -54,6 +55,7 @@ const GameScreen: React.FC = () => {
   const [discoveries, setDiscoveries] = useState<DiscoveryEffect[]>([]);
   const [isLevelComplete, setIsLevelComplete] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(false);
+  const showStartupDebug = isStartupDebugEnabled();
 
   const canvasRef = React.useRef<HTMLDivElement>(null);
 
@@ -64,7 +66,7 @@ const GameScreen: React.FC = () => {
     setSessionId(null); // Reset session to force new one for new level
   }, [levelId, clearCanvas]);
 
-  const { data: levels, isLoading: levelsLoading } = useQuery({
+  const { data: levels, isLoading: levelsLoading, error: levelsError } = useQuery({
     queryKey: ['levels'],
     queryFn: apiClient.getLevels,
   });
@@ -75,21 +77,60 @@ const GameScreen: React.FC = () => {
     mutationFn: ({ userId, lId }: { userId: string, lId: string }) => 
       apiClient.startSession(userId, lId),
     onSuccess: (data) => {
+      emitStartupDebug('start session', 'success', `Started session ${data.sessionId}`);
       setSessionId(data.sessionId);
+    },
+    onError: (error) => {
+      emitStartupDebug('start session', 'error', describeError(error));
     },
   });
 
   useEffect(() => {
     if (levelId && !sessionId && !startSessionMutation.isPending) {
+      emitStartupDebug('start session', 'pending', `Starting level ${levelId}`, `userId: ${userId || '(empty)'}`);
       startSessionMutation.mutate({ userId, lId: levelId });
     }
   }, [levelId, sessionId, startSessionMutation, userId]);
 
-  const { data: sessionData, isLoading: sessionLoading } = useQuery({
+  const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQuery({
     queryKey: ['session', sessionId],
     queryFn: () => apiClient.getSession(sessionId!),
     enabled: !!sessionId,
   });
+
+  useEffect(() => {
+    if (levelsLoading) {
+      emitStartupDebug('game screen', 'pending', 'Loading level list before game');
+      return;
+    }
+
+    if (levelsError) {
+      emitStartupDebug('game screen', 'error', describeError(levelsError));
+      return;
+    }
+
+    if (level) {
+      emitStartupDebug('game screen', 'success', `Resolved level ${level.name}`);
+    } else if (levels) {
+      emitStartupDebug('game screen', 'error', `Level ${levelId ?? '(missing)'} was not found`, `Loaded levels: ${levels.map((l) => l.id).join(', ')}`);
+    }
+  }, [level, levelId, levels, levelsError, levelsLoading]);
+
+  useEffect(() => {
+    if (sessionLoading) {
+      emitStartupDebug('load session', 'pending', `Loading session ${sessionId}`);
+      return;
+    }
+
+    if (sessionError) {
+      emitStartupDebug('load session', 'error', describeError(sessionError));
+      return;
+    }
+
+    if (sessionData) {
+      emitStartupDebug('load session', 'success', `Loaded ${sessionData.inventory.length} inventory items`);
+    }
+  }, [sessionData, sessionError, sessionId, sessionLoading]);
 
   const inventoryItems = sessionData?.inventory.map(i => i.name) || level?.startingItems || [];
 
@@ -176,8 +217,10 @@ const GameScreen: React.FC = () => {
       void queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
       void queryClient.invalidateQueries({ queryKey: ['levels'] });
     },
-    onError: () => {
-      setCraftingError('Combination failed. Try again.');
+    onError: (error) => {
+      const message = describeError(error);
+      setCraftingError(`Combination failed: ${message}`);
+      emitStartupDebug('craft element', 'error', message);
       setApiCompanionMessage(null);
     },
   });
@@ -344,11 +387,47 @@ const GameScreen: React.FC = () => {
     }
   };
 
-  if (levelsLoading || (sessionId && sessionLoading)) {
+  const startupError = levelsError || startSessionMutation.error || sessionError;
+
+  if (levelsLoading || startSessionMutation.isPending || (sessionId && sessionLoading)) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
-        <Loader2 className="animate-spin mr-2 text-orange-500" />
-        <span className="magma-text font-black uppercase tracking-widest">Igniting Forge...</span>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center gap-4 p-6">
+        <div className="flex items-center">
+          <Loader2 className="animate-spin mr-2 text-orange-500" />
+          <span className="magma-text font-black uppercase tracking-widest">Igniting Forge...</span>
+        </div>
+        {showStartupDebug && (
+          <div className="max-w-2xl rounded-2xl border border-orange-500/20 bg-zinc-900/60 p-4 font-mono text-xs text-zinc-300">
+            <p>levelId: {levelId ?? '(missing)'}</p>
+            <p>userId: {userId || '(missing)'}</p>
+            <p>sessionId: {sessionId ?? '(pending)'}</p>
+            <p>levelsLoading: {String(levelsLoading)}</p>
+            <p>startSessionPending: {String(startSessionMutation.isPending)}</p>
+            <p>sessionLoading: {String(sessionLoading)}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (startupError) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-8">
+        <div className="max-w-2xl text-center">
+          <h1 className="text-3xl font-bold mb-4 text-red-400">Forge Startup Failed</h1>
+          <p className="mb-6 text-zinc-400 font-medium">
+            The game could not finish loading this level.
+          </p>
+          <pre className="mb-8 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-left font-mono text-xs text-red-100">
+            {describeError(startupError)}
+          </pre>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-red-500/10 border border-red-500/20 text-red-400 font-bold rounded-2xl hover:bg-red-500/20 transition-all"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
