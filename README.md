@@ -113,10 +113,11 @@ Or use:
 - macOS/Linux: `./scripts/test.sh`
 - Windows PowerShell: `scripts/test.ps1`
 
-## Contributors
+## 👥 Contributors
 
 - **Project Team** - Initial scaffold and architecture
-- **Gemini CLI Assistant** - Full-stack integration, API development, and database seeding
+
+---
 
 ## Local Development
 
