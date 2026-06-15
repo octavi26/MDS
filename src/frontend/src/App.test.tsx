@@ -5,6 +5,8 @@ import App from './App'
 // Mock the apiClient
 vi.mock('./api/apiClient', () => ({
   apiClient: {
+    getUserId: vi.fn().mockReturnValue('test-user-id'),
+    getUsername: vi.fn().mockReturnValue('TestPlayer'),
     getLevels: vi.fn().mockResolvedValue([
       {
         id: '1',
