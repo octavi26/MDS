@@ -35,11 +35,15 @@ export interface User {
 
 export const apiClient = {
   getUserId(): string | null {
-    return localStorage.getItem('mock_forge_user_id');
+    const id = localStorage.getItem('mock_forge_user_id');
+    if (!id || id === 'undefined' || id === 'null') return null;
+    return id;
   },
 
   getUsername(): string | null {
-    return localStorage.getItem('mock_forge_username');
+    const username = localStorage.getItem('mock_forge_username');
+    if (!username || username === 'undefined' || username === 'null') return null;
+    return username;
   },
 
   async registerUser(username: string): Promise<User> {
