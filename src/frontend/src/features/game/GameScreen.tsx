@@ -170,7 +170,13 @@ const GameScreen: React.FC = () => {
       }
 
       combineItems(sourceId, targetId, result.name, x, y);
-      localCompanion.notifyElementAdded(result.name);
+      // A result the player already owns means this attempt got them nowhere —
+      // track it so the companion can escalate to hints if it keeps happening.
+      if (isNew) {
+        localCompanion.notifyElementAdded(result.name);
+      } else {
+        localCompanion.notifyUnproductiveMove();
+      }
       setApiCompanionMessage(null);
       setCraftingError(null);
       void queryClient.invalidateQueries({ queryKey: ['session', sessionId] });

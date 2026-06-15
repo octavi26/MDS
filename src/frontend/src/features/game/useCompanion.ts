@@ -16,6 +16,8 @@ interface UseCompanionInput {
 interface UseCompanionResult {
   message: string | null;
   notifyElementAdded: (elementName: string) => void;
+  /** A combination that produced nothing new — the player may be stuck. */
+  notifyUnproductiveMove: () => void;
   notifyCanvasCleared: () => void;
 }
 
@@ -30,6 +32,7 @@ export const useCompanion = ({ levelName, goalName, inventory, muted = false }: 
   const [message, setMessage] = useState<string | null>(null);
   const discoveredRef = useRef<Set<string>>(new Set());
   const moveCountRef = useRef(0);
+  const struggleRef = useRef(0);
   const inFlightRef = useRef<AbortController | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mutedRef = useRef(muted);
@@ -107,6 +110,7 @@ export const useCompanion = ({ levelName, goalName, inventory, muted = false }: 
         goalName: goalName ?? null,
         inventory,
         moveCount: moveCountRef.current,
+        struggleCount: struggleRef.current,
       };
 
       try {
@@ -125,6 +129,8 @@ export const useCompanion = ({ levelName, goalName, inventory, muted = false }: 
   const notifyElementAdded = useCallback(
     (elementName: string) => {
       moveCountRef.current += 1;
+      // Real progress: the player is no longer stuck.
+      struggleRef.current = 0;
 
       const isGoal = goalName !== undefined && goalName !== null && elementName === goalName;
       const isFirst = !discoveredRef.current.has(elementName);
@@ -142,11 +148,20 @@ export const useCompanion = ({ levelName, goalName, inventory, muted = false }: 
     [goalName, send],
   );
 
+  const notifyUnproductiveMove = useCallback(() => {
+    moveCountRef.current += 1;
+    struggleRef.current += 1;
+    // Once the player keeps making things they already own, nudge the companion
+    // to weigh in — it starts dropping hints once the struggle count is high
+    // enough (decided server-side).
+    void send('FailedCombination', null);
+  }, [send]);
+
   const notifyCanvasCleared = useCallback(() => {
     moveCountRef.current += 1;
     discoveredRef.current.clear();
     void send('FailedCombination', null);
   }, [send]);
 
-  return { message, notifyElementAdded, notifyCanvasCleared };
+  return { message, notifyElementAdded, notifyUnproductiveMove, notifyCanvasCleared };
 };

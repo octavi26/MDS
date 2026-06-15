@@ -11,6 +11,8 @@ export interface CompanionCommentRequest {
   goalName?: string | null;
   inventory: string[];
   moveCount: number;
+  /** Consecutive unproductive attempts; the companion starts hinting once this climbs. */
+  struggleCount?: number;
 }
 
 export interface CompanionComment {

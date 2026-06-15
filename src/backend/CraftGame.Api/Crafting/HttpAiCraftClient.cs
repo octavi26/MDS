@@ -28,4 +28,29 @@ public sealed class HttpAiCraftClient(HttpClient httpClient) : IAiCraftClient
             return null;
         }
     }
+
+    public async Task<AiHintResult?> GetHintAsync(
+        AiHintRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await httpClient.PostAsJsonAsync("hint", request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<AiHintResult>(
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return null;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
 }

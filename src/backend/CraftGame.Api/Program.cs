@@ -133,9 +133,28 @@ app.MapGet("/ready", async (CraftGameDbContext db, CancellationToken cancellatio
 app.MapPost("/api/companion/comments", async (
     CompanionCommentRequest request,
     ICompanionAgent companionAgent,
+    IAiCraftClient aiCraftClient,
     CancellationToken cancellationToken) =>
 {
-    var comment = await companionAgent.GenerateCommentAsync(request.ToContext(), cancellationToken);
+    var context = request.ToContext();
+
+    // After a couple of unproductive attempts, ask the ai-service for a real
+    // combination the player can make toward the goal, and let the companion
+    // smuggle it into its mockery as a hint. Never hint on a level-complete.
+    const int hintThreshold = 2;
+    if (context.StruggleCount >= hintThreshold && context.EventType != CompanionEventType.LevelCompleted)
+    {
+        var hint = await aiCraftClient.GetHintAsync(
+            new AiHintRequest(context.Inventory.ToList(), context.GoalName), cancellationToken);
+
+        if (hint is { Found: true, ElementA: { } elementA, ElementB: { } elementB }
+            && !string.IsNullOrWhiteSpace(elementA) && !string.IsNullOrWhiteSpace(elementB))
+        {
+            context = context with { HintElementA = elementA, HintElementB = elementB };
+        }
+    }
+
+    var comment = await companionAgent.GenerateCommentAsync(context, cancellationToken);
     return Results.Ok(comment);
 })
 .WithTags("Companion");

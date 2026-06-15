@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.crafting.engine import CraftingEngine
-from app.crafting.models import CraftRequest, CraftResponse
+from app.crafting.hints import suggest_hint
+from app.crafting.models import CraftRequest, CraftResponse, HintRequest, HintResponse
 from app.tts import MEDIA_DIR, synthesize_to_media
 from app.tts.models import TtsRequest, TtsResponse
 
@@ -43,6 +44,17 @@ async def craft(
     engine: CraftingEngine = Depends(get_crafting_engine),
 ) -> CraftResponse:
     return await engine.craft(request)
+
+
+@app.post("/hint", response_model=HintResponse)
+async def hint(request: HintRequest) -> HintResponse:
+    """Suggest the next productive combination toward the goal, if there is one."""
+    suggestion = suggest_hint(request.inventory, request.goal)
+    if suggestion is None:
+        return HintResponse(found=False)
+
+    element_a, element_b, result = suggestion
+    return HintResponse(found=True, element_a=element_a, element_b=element_b, result=result)
 
 
 @app.post("/tts", response_model=TtsResponse)

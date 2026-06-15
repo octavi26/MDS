@@ -6,7 +6,8 @@ public sealed record CompanionCommentRequest(
     string? LevelName,
     string? GoalName,
     IReadOnlyCollection<string>? Inventory,
-    int MoveCount)
+    int MoveCount,
+    int StruggleCount = 0)
 {
     public CompanionEventContext ToContext()
     {
@@ -17,7 +18,8 @@ public sealed record CompanionCommentRequest(
             Normalize(GoalName),
             Inventory?.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).ToArray()
                 ?? Array.Empty<string>(),
-            Math.Max(0, MoveCount));
+            Math.Max(0, MoveCount),
+            Math.Max(0, StruggleCount));
     }
 
     private static string? Normalize(string? value)

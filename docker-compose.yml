@@ -20,15 +20,16 @@ services:
       context: ./src/ai-service
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
-      # Reuse the companion's model for inventing new crafting combinations, so
-      # the stack only has to download and keep ONE model resident in memory.
-      # The code default (qwen2.5:0.5b-instruct) was never pulled by the ollama
-      # service, so the AI crafting path 404'd and silently fell back to canned
-      # results on every novel combination.
-      OLLAMA_MODEL: qwen2.5:3b-instruct
-      # Headroom so a warm 3B generation on a slower CPU doesn't time out into
-      # the fallback (the default is only 5s).
-      CRAFT_AI_TIMEOUT_SECONDS: "20"
+      # Crafting uses its OWN small, fast model -- separate from the companion's
+      # 3B -- so that (a) novel combinations come back in well under a second
+      # ("lightning fast"), and (b) a craft never has to queue behind a companion
+      # line on the same model. Sharing the 3B caused crafts to time out into the
+      # backend's "Combination failed" error under contention. This model must be
+      # one the ollama service actually pulls (see its entrypoint).
+      OLLAMA_MODEL: qwen2.5:0.5b-instruct
+      # Safety net only -- the 0.5B model normally answers in <1s. If it's somehow
+      # slow, fall back fast rather than make the player wait.
+      CRAFT_AI_TIMEOUT_SECONDS: "8"
     ports:
       - "8001:8001"
     volumes:
@@ -56,13 +57,16 @@ services:
       - |
         ollama serve &
         until ollama list >/dev/null 2>&1; do sleep 1; done
+        # 3B: the companion's personality model. 0.5B: the crafting model (fast).
         ollama pull qwen2.5:3b-instruct || true
-        # Warm the model (load weights into RAM) so the first real companion
-        # request is fast instead of timing out on a cold start.
+        ollama pull qwen2.5:0.5b-instruct || true
+        # Warm both (load weights into RAM) so the first real companion line and
+        # the first craft are fast instead of timing out on a cold start.
         ollama run qwen2.5:3b-instruct "hi" >/dev/null 2>&1 || true
+        ollama run qwen2.5:0.5b-instruct "hi" >/dev/null 2>&1 || true
         wait
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:3b-instruct"]
+      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:3b-instruct && ollama list | grep -q qwen2.5:0.5b-instruct"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -86,6 +90,10 @@ services:
       # on a modest machine, and a cold start much longer. Better to wait than to
       # fall back to a canned line.
       CompanionAgent__TimeoutSeconds: "60"
+      # The backend must wait longer than the ai-service's own craft timeout
+      # (8s), otherwise it gives up first and shows "Combination failed" even
+      # though the ai-service would have returned a result.
+      AiCraftClient__TimeoutSeconds: "15"
     ports:
       - "5088:8080"
     depends_on:

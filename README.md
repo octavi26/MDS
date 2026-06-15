@@ -17,6 +17,35 @@ From the repo root:
 docker compose up --build
 ```
 
+This works everywhere, but the companion's language model runs on the **CPU**,
+which is slow on a laptop (~25-30s per spoken line). If you have a GPU, use one
+of the accelerated modes below for ~1-2s lines.
+
+### Run modes (LLM acceleration)
+
+The crafting AI and the companion both use Ollama. Pick the mode that matches
+your machine:
+
+| Your machine | Command | Speed |
+| --- | --- | --- |
+| **Any (default)** | `docker compose up --build` | CPU, slow but zero-setup |
+| **NVIDIA GPU** (e.g. RTX 3060) | `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build` | CUDA, fast |
+| **Apple Silicon Mac** | see below | Metal, fast |
+
+**NVIDIA GPU** also needs the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html);
+Ollama then auto-detects the card.
+
+**Apple Silicon Mac** — Docker can't reach the Mac GPU, so run Ollama natively
+(Metal) on the host and let the Docker stack talk to it:
+
+```sh
+brew install ollama                    # once
+brew services start ollama             # runs Ollama in the background (Metal)
+ollama pull qwen2.5:3b-instruct
+ollama pull qwen2.5:0.5b-instruct
+docker compose -f docker-compose.yml -f docker-compose.mac.yml up --build
+```
+
 Open:
 
 - Frontend placeholder: http://localhost:5173
@@ -38,11 +67,14 @@ voice. Everything runs locally inside Docker — **no manual setup on any OS**:
   cached in the `ollama-data` volume), so the first start takes a few extra
   minutes. Until the model is ready, the companion uses built-in fallback lines.
 
+Two models are used, both served by Ollama: `qwen2.5:3b-instruct` for the
+companion's lines (it needs the wit) and the small, fast `qwen2.5:0.5b-instruct`
+for inventing new crafting combinations (it needs the speed).
+
 Both pieces degrade gracefully: if TTS or the LLM is unavailable the game still
-works (text-only / deterministic lines). To change the model, edit
-`CompanionAgent__OllamaModel` in `docker-compose.yml`. On Linux with an NVIDIA
-GPU you can add a `deploy.resources` GPU reservation to the `ollama` service for
-faster generation; CPU is the default and works everywhere.
+works (text-only / deterministic lines). LLM generation is CPU-bound by default
+and therefore slow on a laptop — see [Run modes](#run-modes-llm-acceleration)
+above to use an NVIDIA or Apple-Silicon GPU for ~1-2s lines instead of ~25-30s.
 
 ## What Is Prepared
 

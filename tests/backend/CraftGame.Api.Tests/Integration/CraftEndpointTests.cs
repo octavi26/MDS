@@ -205,6 +205,13 @@ public sealed class CraftEndpointTests
             LastRequest = request;
             return Task.FromResult(result);
         }
+
+        public Task<AiHintResult?> GetHintAsync(
+            AiHintRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<AiHintResult?>(null);
+        }
     }
 
     private static class TestIds
