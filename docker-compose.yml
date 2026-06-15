@@ -19,7 +19,7 @@ services:
     build:
       context: ./src/ai-service
     environment:
-      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       # Crafting uses its OWN small, fast model -- separate from the companion's
       # 3B -- so that (a) novel combinations come back in well under a second
       # ("lightning fast"), and (b) a craft never has to queue behind a companion
@@ -34,43 +34,8 @@ services:
       - "8001:8001"
     volumes:
       - ai-media:/app/media
-    depends_on:
-      ollama:
-        condition: service_started
-
-  # Local LLM for the companion's context-aware lines. Runs fully in Docker and
-  # auto-downloads the model on first run (cached in the ollama-data volume), so
-  # the whole stack is zero-setup and identical on macOS, Windows and Linux.
-  ollama:
-    image: ollama/ollama:latest
-    environment:
-      # Keep the model resident in memory indefinitely (-1). A cold CPU load of
-      # the model can take longer than the backend's request timeout, which makes
-      # the companion silently fall back to canned lines ("same phrase over and
-      # over"). Staying warm means requests never pay that cold-start penalty.
-      OLLAMA_KEEP_ALIVE: "-1"
-    volumes:
-      - ollama-data:/root/.ollama
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        ollama serve &
-        until ollama list >/dev/null 2>&1; do sleep 1; done
-        # 3B: the companion's personality model. 0.5B: the crafting model (fast).
-        ollama pull qwen2.5:3b-instruct || true
-        ollama pull qwen2.5:0.5b-instruct || true
-        # Warm both (load weights into RAM) so the first real companion line and
-        # the first craft are fast instead of timing out on a cold start.
-        ollama run qwen2.5:3b-instruct "hi" >/dev/null 2>&1 || true
-        ollama run qwen2.5:0.5b-instruct "hi" >/dev/null 2>&1 || true
-        wait
-    healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:3b-instruct && ollama list | grep -q qwen2.5:0.5b-instruct"]
-      interval: 10s
-      timeout: 5s
-      retries: 60
-      start_period: 20s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   backend:
     build:
@@ -79,12 +44,11 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=craftgame;Username=craftgame;Password=craftgame
-      # Context-aware companion lines come from the dockerized Ollama service.
-      # Falls back to deterministic lines if it's unreachable, so the game always
-      # works even while the model is still downloading.
+      # Context-aware companion lines come from native host Ollama by default.
+      # The dev scripts install/start Ollama and pull the required models.
       CompanionAgent__Enabled: "true"
       CompanionAgent__Provider: "ollama"
-      CompanionAgent__OllamaBaseUrl: "http://ollama:11434"
+      CompanionAgent__OllamaBaseUrl: "http://host.docker.internal:11434"
       CompanionAgent__OllamaModel: "qwen2.5:3b-instruct"
       # Generous headroom for slower CPUs: even a warm 3B model can take 15-20s
       # on a modest machine, and a cold start much longer. Better to wait than to
@@ -101,8 +65,8 @@ services:
         condition: service_healthy
       ai-service:
         condition: service_started
-      ollama:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
@@ -118,4 +82,3 @@ services:
 volumes:
   postgres-data:
   ai-media:
-  ollama-data:

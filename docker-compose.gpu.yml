@@ -1,14 +1,14 @@
-# NVIDIA GPU override -- for machines with an NVIDIA card (e.g. an RTX 3060).
+# NVIDIA GPU override for the Docker Ollama fallback mode.
 #
 # Hands the dockerized Ollama the host GPU so the companion's 3B model runs on
-# CUDA instead of the CPU (roughly 10-30x faster lines). The ollama/ollama image
-# auto-detects CUDA when a GPU is visible, so no other change is needed.
+# CUDA instead of the CPU. Native Windows Ollama is still the recommended
+# default; use this only when you explicitly choose container mode.
 #
 # Requires the NVIDIA Container Toolkit on the host:
 #   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
 #
 # Run with:
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.container-ollama.yml -f docker-compose.gpu.yml up -d --build
 services:
   ollama:
     deploy:

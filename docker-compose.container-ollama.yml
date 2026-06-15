@@ -1,0 +1,47 @@
+# Fallback mode: run Ollama inside Docker instead of using native host Ollama.
+#
+# This is slower on macOS and on many Windows machines because Docker may not
+# expose the host GPU to the Linux container. Prefer `dev.cmd` or
+# `./scripts/dev.sh` without the `container` argument unless native Ollama is not
+# available on the machine.
+services:
+  ai-service:
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"
+    volumes:
+      - ollama-data:/root/.ollama
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull qwen2.5:3b-instruct || true
+        ollama pull qwen2.5:0.5b-instruct || true
+        ollama run qwen2.5:3b-instruct "hi" >/dev/null 2>&1 || true
+        ollama run qwen2.5:0.5b-instruct "hi" >/dev/null 2>&1 || true
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q qwen2.5:3b-instruct && ollama list | grep -q qwen2.5:0.5b-instruct"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  backend:
+    environment:
+      CompanionAgent__OllamaBaseUrl: "http://ollama:11434"
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama-data:
