@@ -8,6 +8,7 @@ public sealed class CraftGameDbContext(DbContextOptions<CraftGameDbContext> opti
     public DbSet<User> Users => Set<User>();
     public DbSet<Level> Levels => Set<Level>();
     public DbSet<Element> Elements => Set<Element>();
+    public DbSet<CraftingRecipe> CraftingRecipes => Set<CraftingRecipe>();
     public DbSet<GameSession> GameSessions => Set<GameSession>();
     public DbSet<SessionInventory> SessionInventories => Set<SessionInventory>();
 
@@ -35,6 +36,15 @@ public sealed class CraftGameDbContext(DbContextOptions<CraftGameDbContext> opti
             .WithMany(e => e.Inventories)
             .HasForeignKey(si => si.ElementId);
 
+        modelBuilder.Entity<CraftingRecipe>()
+            .HasIndex(recipe => new { recipe.ElementAKey, recipe.ElementBKey })
+            .IsUnique();
+
+        modelBuilder.Entity<CraftingRecipe>()
+            .HasOne(recipe => recipe.ResultElement)
+            .WithMany(e => e.ResultRecipes)
+            .HasForeignKey(recipe => recipe.ResultElementId);
+
         modelBuilder.Entity<Level>()
             .HasMany(l => l.StartingElements)
             .WithMany(e => e.Levels)
@@ -52,21 +62,21 @@ public sealed class CraftGameDbContext(DbContextOptions<CraftGameDbContext> opti
         var airId = new Guid("f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c");
         var earthId = new Guid("a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d");
         
-        var mudId = Guid.NewGuid();
-        var steamId = Guid.NewGuid();
-        var energyId = Guid.NewGuid();
-        var stoneId = Guid.NewGuid();
-        var metalId = Guid.NewGuid();
-        var toolId = Guid.NewGuid();
-        var woodId = Guid.NewGuid();
-        var wheelId = Guid.NewGuid();
-        var engineId = Guid.NewGuid();
-        var carId = Guid.NewGuid();
-        var lifeId = Guid.NewGuid();
-        var dnaId = Guid.NewGuid();
-        var humanId = Guid.NewGuid();
-        var robotId = Guid.NewGuid();
-        var cyborgId = Guid.NewGuid();
+        var mudId = new Guid("15d21606-737a-4f8e-81fa-08a439cf407f");
+        var steamId = new Guid("24af5e8c-186c-4886-93f4-53171f54045e");
+        var energyId = new Guid("52be66d6-c58a-4379-a53d-d75dfcdaee19");
+        var stoneId = new Guid("1751b084-2cc8-4abc-9c46-5f915e6e2b79");
+        var metalId = new Guid("cfdfef17-ba96-4c95-8849-ff523e7f2fb1");
+        var toolId = new Guid("5cdaaf70-a9bb-40d9-aff7-6548cd13867c");
+        var woodId = new Guid("399f2f14-ba58-457d-adea-4d6b1cd31b0e");
+        var wheelId = new Guid("9e2178d5-f5a1-40ef-9341-0b119bb341ec");
+        var engineId = new Guid("7c599ff1-2874-46c8-964d-8a2215368c11");
+        var carId = new Guid("4eda4bc0-da00-43e1-83ed-293a35180476");
+        var lifeId = new Guid("40e582ff-0317-43a5-83b0-fdc83e2343db");
+        var dnaId = new Guid("fb802ed3-aaf1-4f35-a98c-2b0b3ca998ff");
+        var humanId = new Guid("2811f056-bcda-4dee-aa12-f49235277733");
+        var robotId = new Guid("ed102632-5c7b-4246-a60f-65049935ac77");
+        var cyborgId = new Guid("c8cb07b9-90c1-48fc-9252-b0334175091b");
 
         modelBuilder.Entity<User>().HasData(new User
         {

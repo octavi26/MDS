@@ -174,20 +174,20 @@ app.MapPost("/api/users/register", async (RegisterUserRequest request, CraftGame
 })
 .WithTags("Users");
 
-app.MapGet("/api/levels", async (CraftGameDbContext db) =>
+app.MapGet("/api/levels", async (Guid? userId, CraftGameDbContext db) =>
 {
-    var userId = new Guid("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
-
     var levels = await db.Levels
         .Include(l => l.StartingElements)
         .OrderBy(l => l.Order)
         .ToListAsync();
 
-    var completedLevelIds = await db.GameSessions
-        .Where(s => s.UserId == userId && s.IsCompleted)
-        .Select(s => s.LevelId)
-        .Distinct()
-        .ToListAsync();
+    var completedLevelIds = userId.HasValue 
+        ? await db.GameSessions
+            .Where(s => s.UserId == userId.Value && s.IsCompleted)
+            .Select(s => s.LevelId)
+            .Distinct()
+            .ToListAsync()
+        : new List<Guid>();
 
     var result = new List<object>();
     var maxCompletedOrder = levels
@@ -329,7 +329,11 @@ app.MapPost("/api/craft", async (
     IAiCraftClient aiCraftClient,
     CancellationToken cancellationToken) =>
 {
-    var elements = new[] { request.ElementA, request.ElementB }.OrderBy(e => e).ToList();
+    var elements = NormalizeCombination(request.ElementA, request.ElementB);
+    if (elements == null)
+    {
+        return Results.BadRequest("Both elements are required.");
+    }
 
     var session = await db.GameSessions
         .Include(s => s.Level)
@@ -342,34 +346,57 @@ app.MapPost("/api/craft", async (
         return Results.NotFound("Game session was not found.");
     }
 
-    var result = await aiCraftClient.CraftAsync(new AiCraftRequest(
-        ElementA: elements[0],
-        ElementB: elements[1],
-        LevelName: session.Level.Name,
-        LevelDifficulty: session.Level.Difficulty,
-        GoalElement: session.Level.GoalElementName,
-        Inventory: session.InventoryItems
-            .Select(si => si.Element.Name)
-            .OrderBy(name => name)
-            .ToList()), cancellationToken);
+    var element = await db.CraftingRecipes
+        .Include(recipe => recipe.ResultElement)
+        .Where(recipe => recipe.ElementAKey == elements.Value.ElementAKey
+            && recipe.ElementBKey == elements.Value.ElementBKey)
+        .Select(recipe => recipe.ResultElement)
+        .FirstOrDefaultAsync(cancellationToken);
 
-    if (result == null || string.IsNullOrWhiteSpace(result.Result))
-    {
-        return Results.Problem("AI Service failed to craft.");
-    }
-
-    var element = await db.Elements.FirstOrDefaultAsync(e => e.Name == result.Result, cancellationToken);
     if (element == null)
     {
-        element = new Element
+        var result = await aiCraftClient.CraftAsync(new AiCraftRequest(
+            ElementA: elements.Value.ElementA,
+            ElementB: elements.Value.ElementB,
+            LevelName: session.Level.Name,
+            LevelDifficulty: session.Level.Difficulty,
+            GoalElement: session.Level.GoalElementName,
+            Inventory: session.InventoryItems
+                .Select(si => si.Element.Name)
+                .OrderBy(name => name)
+                .ToList()), cancellationToken);
+
+        if (result == null || string.IsNullOrWhiteSpace(result.Result))
+        {
+            return Results.Problem("AI Service failed to craft.");
+        }
+
+        var resultName = NormalizeElementName(result.Result);
+        element = await db.Elements.FirstOrDefaultAsync(e => e.Name == resultName, cancellationToken);
+        if (element == null)
+        {
+            element = new Element
+            {
+                Id = Guid.NewGuid(),
+                Name = resultName,
+                Description = $"Discovered by combining {elements.Value.ElementA} and {elements.Value.ElementB}",
+                Icon = "✨",
+                IsStartingElement = false
+            };
+            db.Elements.Add(element);
+        }
+
+        db.CraftingRecipes.Add(new CraftingRecipe
         {
             Id = Guid.NewGuid(),
-            Name = result.Result,
-            Description = $"Discovered by combining {elements[0]} and {elements[1]}",
-            Icon = "✨",
-            IsStartingElement = false
-        };
-        db.Elements.Add(element);
+            ElementAKey = elements.Value.ElementAKey,
+            ElementBKey = elements.Value.ElementBKey,
+            ElementADisplay = elements.Value.ElementA,
+            ElementBDisplay = elements.Value.ElementB,
+            ResultElement = element,
+            CreatedAt = DateTime.UtcNow
+        });
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
@@ -408,6 +435,29 @@ app.MapPost("/api/craft", async (
 app.MapHub<GameHub>("/hubs/game");
 
 app.Run();
+
+static (string ElementA, string ElementB, string ElementAKey, string ElementBKey)? NormalizeCombination(
+    string? elementA,
+    string? elementB)
+{
+    var normalized = new[] { NormalizeElementName(elementA), NormalizeElementName(elementB) };
+    if (normalized.Any(string.IsNullOrWhiteSpace))
+    {
+        return null;
+    }
+
+    Array.Sort(normalized, StringComparer.OrdinalIgnoreCase);
+    return (
+        normalized[0],
+        normalized[1],
+        normalized[0].ToUpperInvariant(),
+        normalized[1].ToUpperInvariant());
+}
+
+static string NormalizeElementName(string? name)
+{
+    return string.Join(' ', (name ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+}
 
 public record StartSessionRequest(Guid UserId, Guid LevelId, bool ForceRestart = false);
 public record RegisterUserRequest(string Username);

@@ -22,8 +22,6 @@ import { useGameStore } from './gameStore';
 import { useCompanion } from './useCompanion';
 import { findOverlappingCanvasItem, CANVAS_ITEM_WIDTH, CANVAS_ITEM_HEIGHT } from './craftingCollision';
 
-const USER_ID = 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d';
-
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
@@ -41,6 +39,8 @@ interface DiscoveryEffect {
 }
 
 const GameScreen: React.FC = () => {
+  const userId = apiClient.getUserId() || '';
+  const username = apiClient.getUsername() || 'OPERATOR';
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -87,9 +87,9 @@ const GameScreen: React.FC = () => {
 
   useEffect(() => {
     if (levelId && !sessionId && !startSessionMutation.isPending) {
-      startSessionMutation.mutate({ userId: USER_ID, lId: levelId });
+      startSessionMutation.mutate({ userId, lId: levelId });
     }
-  }, [levelId, sessionId, startSessionMutation]);
+  }, [levelId, sessionId, startSessionMutation, userId]);
 
   const { data: sessionData, isLoading: sessionLoading } = useQuery({
     queryKey: ['session', sessionId],
@@ -416,7 +416,7 @@ const GameScreen: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">Operator</span>
-              <span className="text-xs font-bold text-zinc-300">OCTAV_01</span>
+              <span className="text-xs font-bold text-zinc-300">{username.toUpperCase()}</span>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-950 border border-white/5 flex items-center justify-center shadow-2xl overflow-hidden relative group">
               <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />

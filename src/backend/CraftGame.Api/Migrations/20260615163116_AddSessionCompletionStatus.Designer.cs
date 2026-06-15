@@ -3,6 +3,7 @@ using System;
 using CraftGame.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CraftGame.Api.Migrations
 {
     [DbContext(typeof(CraftGameDbContext))]
-    partial class CraftGameDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615163116_AddSessionCompletionStatus")]
+    partial class AddSessionCompletionStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,44 +24,6 @@ namespace CraftGame.Api.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("CraftGame.Api.Entities.CraftingRecipe", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ElementADisplay")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ElementAKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ElementBDisplay")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ElementBKey")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ResultElementId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResultElementId");
-
-                    b.HasIndex("ElementAKey", "ElementBKey")
-                        .IsUnique();
-
-                    b.ToTable("CraftingRecipes");
-                });
 
             modelBuilder.Entity("CraftGame.Api.Entities.Element", b =>
                 {
@@ -572,17 +537,6 @@ namespace CraftGame.Api.Migrations
                         });
                 });
 
-            modelBuilder.Entity("CraftGame.Api.Entities.CraftingRecipe", b =>
-                {
-                    b.HasOne("CraftGame.Api.Entities.Element", "ResultElement")
-                        .WithMany("ResultRecipes")
-                        .HasForeignKey("ResultElementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ResultElement");
-                });
-
             modelBuilder.Entity("CraftGame.Api.Entities.GameSession", b =>
                 {
                     b.HasOne("CraftGame.Api.Entities.Level", "Level")
@@ -639,8 +593,6 @@ namespace CraftGame.Api.Migrations
             modelBuilder.Entity("CraftGame.Api.Entities.Element", b =>
                 {
                     b.Navigation("Inventories");
-
-                    b.Navigation("ResultRecipes");
                 });
 
             modelBuilder.Entity("CraftGame.Api.Entities.GameSession", b =>

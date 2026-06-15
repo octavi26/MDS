@@ -28,9 +28,41 @@ export interface CraftedElement {
   isGoalReached?: boolean;
 }
 
+export interface User {
+  id: string;
+  username: string;
+}
+
 export const apiClient = {
+  getUserId(): string | null {
+    const id = localStorage.getItem('mock_forge_user_id');
+    if (!id || id === 'undefined' || id === 'null') return null;
+    return id;
+  },
+
+  getUsername(): string | null {
+    const username = localStorage.getItem('mock_forge_username');
+    if (!username || username === 'undefined' || username === 'null') return null;
+    return username;
+  },
+
+  async registerUser(username: string): Promise<User> {
+    const response = await fetch(`${API_BASE_URL}/api/users/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    if (!response.ok) throw new Error('Failed to register user');
+    const user = await response.json();
+    localStorage.setItem('mock_forge_user_id', user.id);
+    localStorage.setItem('mock_forge_username', user.username);
+    return user;
+  },
+
   async getLevels(): Promise<Level[]> {
-    const response = await fetch(`${API_BASE_URL}/api/levels`);
+    const userId = this.getUserId();
+    const url = userId ? `${API_BASE_URL}/api/levels?userId=${userId}` : `${API_BASE_URL}/api/levels`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch levels');
     return response.json();
   },
