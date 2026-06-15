@@ -75,27 +75,19 @@ const InventorySidebar: React.FC<InventorySidebarProps> = ({ items }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-3 relative z-10 scrollbar-thin scrollbar-thumb-orange-500/20 scrollbar-track-transparent">
-        <AnimatePresence mode="popLayout">
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item, index) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                key={`${item}-${index}`}
+        {filteredItems.length > 0 ? (
+          filteredItems.map((item, index) => (
+            <div key={`${item}-${index}`} className="w-full">
+              <DraggableItem
+                id={`inv-${item}-${index}`}
+                name={item}
+                type="inventory"
                 className="w-full"
-              >
-                <DraggableItem 
-                  id={`inv-${item}-${index}`}
-                  name={item}
-                  type="inventory"
-                  className="w-full"
-                  onClick={() => handleItemClick(item)}
-                />
-              </motion.div>
-            ))
-          ) : (
+                onClick={() => handleItemClick(item)}
+              />
+            </div>
+          ))
+        ) : (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -106,8 +98,7 @@ const InventorySidebar: React.FC<InventorySidebarProps> = ({ items }) => {
                 {searchTerm ? `No matches found in forge matrix for "${searchTerm}"` : 'Database currently void of materials'}
               </p>
             </motion.div>
-          )}
-        </AnimatePresence>
+        )}
       </div>
 
       <div className="p-6 bg-white/[0.01] border-t border-white/5 relative z-10">

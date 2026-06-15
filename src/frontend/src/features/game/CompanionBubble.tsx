@@ -131,7 +131,7 @@ const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages, muted = fal
         onClick={() => setIsOpen(!isOpen)}
         className="group relative pointer-events-auto"
       >
-        <div className="absolute inset-0 bg-orange-500 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+        <div className="absolute inset-0 bg-orange-500 rounded-full opacity-10 group-hover:opacity-20 transition-opacity" />
         <motion.div 
           animate={{ rotate: isOpen ? 180 : 0 }}
           className="w-20 h-20 bg-zinc-950/60 backdrop-blur-md rounded-full border border-white/10 flex items-center justify-center text-4xl shadow-2xl ring-1 ring-white/5 transition-all duration-500 group-hover:scale-110 group-hover:border-orange-500/50"
@@ -151,7 +151,7 @@ const CompanionBubble: React.FC<CompanionBubbleProps> = ({ messages, muted = fal
         </motion.div>
         
         {/* Orbital Decor */}
-        <div className="absolute inset-0 border border-orange-500/20 rounded-full animate-[spin_10s_linear_infinite] [mask-image:linear-gradient(transparent,black)]" />
+        <div className="absolute inset-0 border border-orange-500/15 rounded-full [mask-image:linear-gradient(transparent,black)]" />
       </button>
     </div>
   );

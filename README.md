@@ -9,14 +9,10 @@ Requirements:
 
 - Docker Desktop
 - Git
+- Ollama is installed automatically by the helper script on Windows when
+  `winget` is available, and on macOS when Homebrew is available.
 
-From the repo root, start the whole project with one command:
-
-```sh
-docker compose up --build
-```
-
-Windows users can also run:
+From the repo root, Windows users run:
 
 ```bat
 dev.cmd
@@ -40,9 +36,10 @@ macOS/Linux users can also run:
 ./scripts/dev.sh
 ```
 
-This works everywhere, but the companion's language model runs on the **CPU**,
-which is slow on a laptop (~25-30s per spoken line). If you have a GPU, use one
-of the accelerated modes below for ~1-2s lines.
+These helpers start native Ollama on the host, pull the required models, warm
+them once, and then start the Docker stack. That is the default because native
+Ollama can use Metal on macOS and the available GPU acceleration on Windows,
+while Dockerized Ollama often falls back to CPU.
 
 ### Run modes (LLM acceleration)
 
@@ -51,23 +48,18 @@ your machine:
 
 | Your machine | Command | Speed |
 | --- | --- | --- |
-| **Any (default)** | `docker compose up --build` | CPU, slow but zero-setup |
-| **NVIDIA GPU** (e.g. RTX 3060) | `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build` | CUDA, fast |
-| **Apple Silicon Mac** | see below | Metal, fast |
+| **Windows (default)** | `dev.cmd` | Native Ollama, GPU-capable |
+| **Windows debug** | `dev.cmd debug` | Native Ollama + on-screen startup diagnostics |
+| **macOS (default)** | `./scripts/dev.sh` | Native Ollama, Metal-capable |
+| **macOS debug** | `./scripts/dev.sh debug` | Native Ollama + on-screen startup diagnostics |
+| **Docker Ollama fallback** | `dev.cmd container` or `./scripts/dev.sh container` | CPU unless Docker GPU passthrough is configured |
+| **NVIDIA Docker fallback** | `docker compose -f docker-compose.yml -f docker-compose.container-ollama.yml -f docker-compose.gpu.yml up --build` | CUDA inside Docker |
 
-**NVIDIA GPU** also needs the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html);
-Ollama then auto-detects the card.
+**NVIDIA Docker fallback** also needs the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html);
+Ollama then auto-detects the card inside the container.
 
-**Apple Silicon Mac** — Docker can't reach the Mac GPU, so run Ollama natively
-(Metal) on the host and let the Docker stack talk to it:
-
-```sh
-brew install ollama                    # once
-brew services start ollama             # runs Ollama in the background (Metal)
-ollama pull qwen2.5:3b-instruct
-ollama pull qwen2.5:0.5b-instruct
-docker compose -f docker-compose.yml -f docker-compose.mac.yml up --build
-```
+The old raw Compose command still works if Ollama is already installed and
+running on the host: `docker compose up --build`.
 
 Open:
 
@@ -80,24 +72,22 @@ Open:
 ### Companion voice (orc boss)
 
 The talking companion speaks context-aware, sarcastic lines in an "orc boss"
-voice. Everything runs locally inside Docker — **no manual setup on any OS**:
+voice. Everything runs locally, with the LLM served by native host Ollama by
+default:
 
 - **Voice (TTS):** Piper + ffmpeg, baked into the `ai-service` image. Works the
   same on macOS, Windows and Linux (the image is Linux; the Piper binary is
   selected per architecture at build time).
-- **Lines (LLM):** a dockerized `ollama` service. On the **first**
-  `docker compose up`, it downloads the `qwen2.5:3b-instruct` model (~2 GB,
-  cached in the `ollama-data` volume), so the first start takes a few extra
-  minutes. Until the model is ready, the companion uses built-in fallback lines.
+- **Lines (LLM):** native Ollama on the host. On the **first** helper-script
+  run, it downloads `qwen2.5:3b-instruct` and `qwen2.5:0.5b-instruct`, so the
+  first start takes a few extra minutes.
 
 Two models are used, both served by Ollama: `qwen2.5:3b-instruct` for the
 companion's lines (it needs the wit) and the small, fast `qwen2.5:0.5b-instruct`
 for inventing new crafting combinations (it needs the speed).
 
 Both pieces degrade gracefully: if TTS or the LLM is unavailable the game still
-works (text-only / deterministic lines). LLM generation is CPU-bound by default
-and therefore slow on a laptop — see [Run modes](#run-modes-llm-acceleration)
-above to use an NVIDIA or Apple-Silicon GPU for ~1-2s lines instead of ~25-30s.
+works (text-only / deterministic lines).
 
 ## What Is Prepared
 

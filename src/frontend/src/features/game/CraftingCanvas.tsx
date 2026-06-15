@@ -23,7 +23,7 @@ const CraftingCanvas: React.FC<CraftingCanvasProps> = ({ hoveredTargetId, canvas
       className="flex-1 relative flex flex-col overflow-hidden bg-[#0c0a09] scanline-container"
     >
       {/* ... rest of background decor ... */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15)_0%,transparent_80%)] animate-ember-pulse" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.1)_0%,transparent_80%)]" />
       
       <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 forgery-grid" />
@@ -40,16 +40,8 @@ const CraftingCanvas: React.FC<CraftingCanvasProps> = ({ hoveredTargetId, canvas
       </div>
 
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <motion.div 
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30"
-        />
-        <motion.div 
-          animate={{ y: ['-100%', '100%'] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-red-500 to-transparent opacity-30"
-        />
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-20" />
+        <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-transparent via-red-500 to-transparent opacity-20" />
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
@@ -60,7 +52,7 @@ const CraftingCanvas: React.FC<CraftingCanvasProps> = ({ hoveredTargetId, canvas
           className="flex flex-col items-center relative"
         >
           <div className="w-[600px] h-[600px] border-[1px] border-orange-500/20 rounded-full flex items-center justify-center">
-            <div className="w-[500px] h-[500px] border-[10px] border-white/5 rounded-full flex items-center justify-center animate-[spin_60s_linear_infinite]">
+            <div className="w-[500px] h-[500px] border-[10px] border-white/5 rounded-full flex items-center justify-center">
               <Flame size={300} strokeWidth={0.5} className="text-orange-600/50" />
             </div>
           </div>
@@ -81,10 +73,9 @@ const CraftingCanvas: React.FC<CraftingCanvasProps> = ({ hoveredTargetId, canvas
             <div className="flex gap-1 mt-1">
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="h-1.5 w-6 bg-zinc-900 border border-white/5 rounded-sm overflow-hidden">
-                  <motion.div 
-                    animate={{ x: [-24, 24] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
-                    className="h-full w-full bg-gradient-to-r from-transparent via-orange-500 to-transparent"
+                  <div
+                    className="h-full bg-gradient-to-r from-orange-900 via-orange-500 to-yellow-400"
+                    style={{ width: `${35 + i * 7}%` }}
                   />
                 </div>
               ))}
@@ -94,11 +85,7 @@ const CraftingCanvas: React.FC<CraftingCanvasProps> = ({ hoveredTargetId, canvas
           <div className="flex flex-col gap-1 opacity-60">
             <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Temp Profile</span>
             <div className="h-32 w-1.5 bg-zinc-900/50 border border-white/5 rounded-full relative overflow-hidden">
-              <motion.div 
-                animate={{ height: ['20%', '60%', '40%', '80%', '50%'] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute bottom-0 w-full bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400"
-              />
+              <div className="absolute bottom-0 h-[58%] w-full bg-gradient-to-t from-red-600 via-orange-500 to-yellow-400" />
             </div>
           </div>
         </div>
