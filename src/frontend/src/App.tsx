@@ -5,11 +5,20 @@ import LevelSelectionScreen from './features/levels/LevelSelectionScreen';
 import GameScreen from './features/game/GameScreen';
 import RegistrationScreen from './features/auth/RegistrationScreen';
 import { apiClient } from './api/apiClient';
+import StartupDebugPanel from './debug/StartupDebugPanel';
+import { emitStartupDebug, getApiBaseUrl } from './debug/startupDebug';
 
 const queryClient = new QueryClient();
 
 function App() {
   const [userId, setUserId] = useState<string | null>(apiClient.getUserId());
+
+  useEffect(() => {
+    emitStartupDebug('app boot', 'info', 'React app mounted', `API base URL: ${getApiBaseUrl()}`);
+    emitStartupDebug('auth state', userId ? 'success' : 'info', userId
+      ? `Found stored user id: ${userId}`
+      : 'No stored user id. Showing registration screen.');
+  }, [userId]);
 
   useEffect(() => {
     const checkUser = () => {
@@ -27,6 +36,7 @@ function App() {
     return (
       <QueryClientProvider client={queryClient}>
         <RegistrationScreen onRegistered={handleRegistered} />
+        <StartupDebugPanel />
       </QueryClientProvider>
     );
   }
@@ -40,6 +50,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      <StartupDebugPanel />
     </QueryClientProvider>
   );
 }

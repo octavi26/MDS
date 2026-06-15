@@ -346,6 +346,16 @@ app.MapPost("/api/craft", async (
         return Results.NotFound("Game session was not found.");
     }
 
+    var ownedElementNames = session.InventoryItems
+        .Select(si => NormalizeElementName(si.Element.Name))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    if (!ownedElementNames.Contains(elements.Value.ElementA)
+        || !ownedElementNames.Contains(elements.Value.ElementB))
+    {
+        return Results.BadRequest("Both elements must be in the session inventory.");
+    }
+
     var element = await db.CraftingRecipes
         .Include(recipe => recipe.ResultElement)
         .Where(recipe => recipe.ElementAKey == elements.Value.ElementAKey

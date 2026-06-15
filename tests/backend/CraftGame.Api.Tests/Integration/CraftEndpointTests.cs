@@ -127,6 +127,32 @@ public sealed class CraftEndpointTests
     }
 
     [Fact]
+    public async Task PostCraft_ReturnsBadRequest_WhenInputIsNotInSessionInventory()
+    {
+        var aiClient = new CapturingAiCraftClient(new AiCraftResult(
+            "Rain",
+            "test",
+            Deterministic: true,
+            UsefulSteps: null,
+            Difficulty: 3));
+
+        await using var factory = CreateFactory(aiClient);
+        await SeedCraftSessionAsync(factory);
+
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/craft", new
+        {
+            sessionId = TestIds.SessionId,
+            elementA = "Fire",
+            elementB = "Water"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, aiClient.CraftRequestCount);
+    }
+
+    [Fact]
     public async Task PostCraft_ReturnsProblem_WhenAiServiceFails()
     {
         await using var factory = CreateFactory(new CapturingAiCraftClient(null));
