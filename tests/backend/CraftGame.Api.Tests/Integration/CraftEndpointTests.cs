@@ -75,6 +75,58 @@ public sealed class CraftEndpointTests
     }
 
     [Fact]
+    public async Task PostCraft_CachesGeneratedRecipeAndReusesIt()
+    {
+        var aiClient = new CapturingAiCraftClient(new AiCraftResult(
+            "Spark Crystal",
+            "test",
+            Deterministic: true,
+            UsefulSteps: null,
+            Difficulty: 3));
+
+        await using var factory = CreateFactory(aiClient);
+        await SeedCraftSessionAsync(factory);
+
+        var client = factory.CreateClient();
+
+        var firstResponse = await client.PostAsJsonAsync("/api/craft", new
+        {
+            sessionId = TestIds.SessionId,
+            elementA = "Fire",
+            elementB = "Dust"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(1, aiClient.CraftRequestCount);
+
+        aiClient.Result = null;
+
+        var secondResponse = await client.PostAsJsonAsync("/api/craft", new
+        {
+            sessionId = TestIds.SessionId,
+            elementA = "Dust",
+            elementB = "Fire"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        Assert.Equal(1, aiClient.CraftRequestCount);
+
+        var payload = await secondResponse.Content.ReadFromJsonAsync<CraftResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("Spark Crystal", payload.Name);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CraftGameDbContext>();
+        var recipe = await db.CraftingRecipes
+            .Include(r => r.ResultElement)
+            .SingleAsync();
+
+        Assert.Equal("DUST", recipe.ElementAKey);
+        Assert.Equal("FIRE", recipe.ElementBKey);
+        Assert.Equal("Spark Crystal", recipe.ResultElement.Name);
+    }
+
+    [Fact]
     public async Task PostCraft_ReturnsProblem_WhenAiServiceFails()
     {
         await using var factory = CreateFactory(new CapturingAiCraftClient(null));
@@ -196,14 +248,17 @@ public sealed class CraftEndpointTests
 
     private sealed class CapturingAiCraftClient(AiCraftResult? result) : IAiCraftClient
     {
+        public AiCraftResult? Result { get; set; } = result;
         public AiCraftRequest? LastRequest { get; private set; }
+        public int CraftRequestCount { get; private set; }
 
         public Task<AiCraftResult?> CraftAsync(
             AiCraftRequest request,
             CancellationToken cancellationToken = default)
         {
+            CraftRequestCount++;
             LastRequest = request;
-            return Task.FromResult(result);
+            return Task.FromResult(Result);
         }
 
         public Task<AiHintResult?> GetHintAsync(
@@ -231,4 +286,5 @@ public sealed class CraftEndpointTests
         IReadOnlyList<SessionInventoryResponse> Inventory);
 
     private sealed record SessionInventoryResponse(string Name, int Quantity);
+    private sealed record CraftResponse(string Name, string Description, string Icon, bool IsGoalReached);
 }

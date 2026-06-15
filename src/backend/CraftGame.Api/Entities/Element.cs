@@ -12,4 +12,5 @@ public class Element
     public bool IsStartingElement { get; set; }
     public ICollection<Level> Levels { get; set; } = new List<Level>();
     public ICollection<SessionInventory> Inventories { get; set; } = new List<SessionInventory>();
+    public ICollection<CraftingRecipe> ResultRecipes { get; set; } = new List<CraftingRecipe>();
 }
