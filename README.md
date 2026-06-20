@@ -5,9 +5,7 @@ ASP.NET Core backend, FastAPI AI/TTS service, PostgreSQL, and Ollama.
 
 **Demo Video**  
 [Speedrun Demo](https://youtu.be/YmHGVLkeNgQ)
-
-<br><br>
-
+<br>
 **Technical Report**  
 [Academic Report (PDF)](MDS_Mocking_Forge_Academic_Report.pdf)
 
