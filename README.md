@@ -3,9 +3,9 @@
 This repository contains the full local craft game stack: React frontend,
 ASP.NET Core backend, FastAPI AI/TTS service, PostgreSQL, and Ollama.
 
-## Start Everything
-
 [SPEEDRUN DEMO](https://youtu.be/YmHGVLkeNgQ)
+
+## Start Everything
 
 Requirements:
 
