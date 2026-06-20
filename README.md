@@ -5,7 +5,7 @@ ASP.NET Core backend, FastAPI AI/TTS service, PostgreSQL, and Ollama.
 
 ## Start Everything
 
-Link speedrun demo: https://youtu.be/YmHGVLkeNgQ
+[SPEEDRUN DEMO](https://youtu.be/YmHGVLkeNgQ)
 
 Requirements:
 
