@@ -3,11 +3,13 @@
 This repository contains the full local craft game stack: React frontend,
 ASP.NET Core backend, FastAPI AI/TTS service, PostgreSQL, and Ollama.
 
-[SPEEDRUN DEMO](https://youtu.be/YmHGVLkeNgQ)
+**Demo Video**  
+[Speedrun Demo](https://youtu.be/YmHGVLkeNgQ)
 
+<br><br>
 
-
-[RAPORT AGENTI](MDS_Mocking_Forge_Academic_Report.pdf)
+**Technical Report**  
+[Academic Report (PDF)](MDS_Mocking_Forge_Academic_Report.pdf)
 
 ## Start Everything
 
